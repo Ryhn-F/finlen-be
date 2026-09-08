@@ -14,5 +14,9 @@ if str(ROOT_DIR) not in sys.path:
 
 from finlen_be.main import app
 
+# Override root_path so Vercel's auto-derived "/api/index" doesn't break route matching
+app.root_path = ""
+
 # Expose app for Vercel Serverless Function runtime
 __all__ = ["app"]
+
