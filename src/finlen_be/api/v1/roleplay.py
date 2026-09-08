@@ -1,6 +1,9 @@
+import logging
 from typing import Annotated, List
 import uuid
-from fastapi import APIRouter, Path, Query, status
+
+from fastapi import APIRouter, HTTPException, Path, Query, status
+from sqlalchemy.exc import SQLAlchemyError
 
 from finlen_be.api.deps import CurrentUserDep, DbSessionDep, RoleplayServiceDep
 from finlen_be.schemas.roleplay import (
@@ -14,6 +17,7 @@ from finlen_be.schemas.roleplay import (
 )
 
 router = APIRouter(prefix="/roleplay", tags=["Roleplay"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -22,6 +26,10 @@ router = APIRouter(prefix="/roleplay", tags=["Roleplay"])
     status_code=status.HTTP_201_CREATED,
     summary="Create roleplay session",
     description="Start a new interactive roleplay session with initial AI greeting and Firestore state synchronization.",
+    responses={
+        404: {"description": "Scenario not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_session(
     req: CreateSessionRequest,
@@ -29,7 +37,22 @@ async def create_session(
     current_user: CurrentUserDep,
     service: RoleplayServiceDep,
 ) -> CreateSessionResponse:
-    return await service.create_session(db, current_user, req)
+    try:
+        return await service.create_session(db, current_user, req)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error creating session: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create session due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error creating session: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while creating the session.",
+        )
 
 
 @router.get(
@@ -37,6 +60,11 @@ async def create_session(
     response_model=SessionDetailResponse,
     summary="Get session details",
     description="Retrieve session metadata, PostgreSQL instinct scores, and Firebase runtime state.",
+    responses={
+        403: {"description": "Access denied — session belongs to another user"},
+        404: {"description": "Session not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_session(
     session_id: Annotated[uuid.UUID, Path(description="UUID of the roleplay session")],
@@ -44,7 +72,22 @@ async def get_session(
     current_user: CurrentUserDep,
     service: RoleplayServiceDep,
 ) -> SessionDetailResponse:
-    return await service.get_session(db, current_user, session_id)
+    try:
+        return await service.get_session(db, current_user, session_id)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error fetching session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve session due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error fetching session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching session details.",
+        )
 
 
 @router.post(
@@ -52,6 +95,12 @@ async def get_session(
     response_model=SendMessageResponse,
     summary="Send roleplay message",
     description="Submit player dialogue/action. Evaluates decision with AI, adjusts stats, updates Firestore, and returns NPC response.",
+    responses={
+        400: {"description": "Session is not active"},
+        403: {"description": "Access denied — session belongs to another user"},
+        404: {"description": "Session not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def send_message(
     session_id: Annotated[uuid.UUID, Path(description="UUID of the roleplay session")],
@@ -60,7 +109,22 @@ async def send_message(
     current_user: CurrentUserDep,
     service: RoleplayServiceDep,
 ) -> SendMessageResponse:
-    return await service.process_message(db, current_user, session_id, req)
+    try:
+        return await service.process_message(db, current_user, session_id, req)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error processing message for session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process message due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error processing message for session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while processing the message.",
+        )
 
 
 @router.get(
@@ -68,6 +132,11 @@ async def send_message(
     response_model=List[RoleplayMessageItem],
     summary="Get session messages",
     description="Retrieve full conversation history stored in Firebase Firestore.",
+    responses={
+        403: {"description": "Access denied — session belongs to another user"},
+        404: {"description": "Session not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_messages(
     session_id: Annotated[uuid.UUID, Path(description="UUID of the roleplay session")],
@@ -77,7 +146,22 @@ async def get_messages(
     limit: Annotated[int, Query(ge=1, le=100, description="Max messages to fetch")] = 50,
     offset: Annotated[int, Query(ge=0, description="Offset index")] = 0,
 ) -> List[RoleplayMessageItem]:
-    return await service.get_messages(db, current_user, session_id, limit=limit, offset=offset)
+    try:
+        return await service.get_messages(db, current_user, session_id, limit=limit, offset=offset)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error fetching messages for session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve messages due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error fetching messages for session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching messages.",
+        )
 
 
 @router.post(
@@ -85,6 +169,12 @@ async def get_messages(
     response_model=SessionCompleteResponse,
     summary="Complete roleplay session",
     description="Finalize the session, calculate earned XP, update user profile progression, and lock session from future turns.",
+    responses={
+        400: {"description": "Session is already completed"},
+        403: {"description": "Access denied — session belongs to another user"},
+        404: {"description": "Session not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def complete_session(
     session_id: Annotated[uuid.UUID, Path(description="UUID of the roleplay session")],
@@ -92,4 +182,19 @@ async def complete_session(
     current_user: CurrentUserDep,
     service: RoleplayServiceDep,
 ) -> SessionCompleteResponse:
-    return await service.complete_session(db, current_user, session_id)
+    try:
+        return await service.complete_session(db, current_user, session_id)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error completing session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to complete session due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error completing session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while completing the session.",
+        )

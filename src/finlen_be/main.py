@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from finlen_be.api.v1 import api_v1_router
 from finlen_be.core.config import settings
@@ -70,6 +73,63 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Global Exception Handlers ─────────────────────────────────────────────────
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Return 422 with a human-readable summary of validation errors."""
+    errors = exc.errors()
+    messages = []
+    for err in errors:
+        loc = " → ".join(str(l) for l in err.get("loc", []))
+        messages.append(f"{loc}: {err.get('msg', 'invalid')}")
+    detail = "; ".join(messages) if messages else "Validation error"
+    logger.warning("Validation error on %s %s: %s", request.method, request.url.path, detail)
+    return JSONResponse(
+        status_code=422,
+        content={"detail": detail, "error_code": "VALIDATION_ERROR"},
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
+    """Catch database errors and return a safe 500 response."""
+    logger.error(
+        "Database error on %s %s: %s",
+        request.method,
+        request.url.path,
+        str(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "A database error occurred. Please try again later.", "error_code": "DATABASE_ERROR"},
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Catch-all for unhandled exceptions — returns a safe 500 response."""
+    logger.error(
+        "Unhandled error on %s %s: %s",
+        request.method,
+        request.url.path,
+        str(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred.", "error_code": "INTERNAL_ERROR"},
+    )
+
 
 # Register API v1 routes
 app.include_router(api_v1_router)
