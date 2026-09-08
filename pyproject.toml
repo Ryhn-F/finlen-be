@@ -1,0 +1,44 @@
+[project]
+name = "finlen-be"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Reyhan Firdaus", email = "reyhan.firdaus227@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.14.1",
+    "asyncpg>=0.30.0",
+    "bcrypt>=4.0.1",
+    "fastapi[standard]>=0.141.1",
+    "firebase-admin>=6.6.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "pyjwt>=2.10.1",
+    "python-multipart>=0.0.20",
+    "sqlalchemy[asyncio]>=2.0.38",
+]
+
+[project.scripts]
+finlen-be = "finlen_be:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.fastapi]
+entrypoint = "finlen_be.main:app"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+

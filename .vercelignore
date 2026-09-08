@@ -1,0 +1,26 @@
+# Virtual environments & local caches
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[oc]
+
+# Tests & specs
+tests/
+
+# Agent & AI artifacts
+.agents/
+
+# Database dumps & local files
+backup.sql
+*.sql
+
+# Environment files
+.env
+.env.*
+
+# Documentation
+docs/
+
+# Git
+.git/
+.gitignore
