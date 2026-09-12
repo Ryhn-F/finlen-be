@@ -13,6 +13,7 @@ from finlen_be.services.document_analyzer_service import (
     DocumentAnalyzerService,
     document_analyzer_service,
 )
+from finlen_be.services.storage_service import StorageService, storage_service
 
 __all__ = [
     "AuthService",
@@ -33,4 +34,6 @@ __all__ = [
     "gemini_analyzer_service",
     "DocumentAnalyzerService",
     "document_analyzer_service",
+    "StorageService",
+    "storage_service",
 ]

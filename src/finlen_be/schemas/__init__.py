@@ -1,6 +1,6 @@
 from finlen_be.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse
 from finlen_be.schemas.user import UserResponse
-from finlen_be.schemas.scenario import ScenarioListItem, ScenarioDetail
+from finlen_be.schemas.scenario import ScenarioListItem, ScenarioDetail, LearningMaterialItem
 from finlen_be.schemas.ai import (
     EvaluationScores,
     EvaluationConsequence,
@@ -35,6 +35,7 @@ __all__ = [
     "UserResponse",
     "ScenarioListItem",
     "ScenarioDetail",
+    "LearningMaterialItem",
     "EvaluationScores",
     "EvaluationConsequence",
     "StateChanges",

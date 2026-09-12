@@ -92,3 +92,8 @@ class Scenario(Base):
         "RoleplaySession",
         back_populates="scenario_rel",
     )
+    learning_materials: Mapped[list["LearningMaterial"]] = relationship(
+        "LearningMaterial",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )

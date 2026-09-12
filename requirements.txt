@@ -2,6 +2,12 @@
 #    uv export --no-dev --no-hashes --no-emit-project -o requirements.txt
 agent-detector==1.1.0
     # via fastapi-cloud-cli
+aiohappyeyeballs==2.7.1
+    # via aiohttp
+aiohttp==3.14.3
+    # via finlen-be
+aiosignal==1.4.0
+    # via aiohttp
 alembic==1.19.2
     # via finlen-be
 annotated-doc==0.0.5
@@ -12,11 +18,18 @@ annotated-types==0.8.0
     # via pydantic
 anyio==4.14.2
     # via
+    #   google-genai
     #   httpx
     #   starlette
     #   watchfiles
 asyncpg==0.31.0
     # via finlen-be
+attrs==26.1.0
+    # via aiohttp
+azure-ai-documentintelligence==1.0.2
+    # via finlen-be
+azure-core==1.41.0
+    # via azure-ai-documentintelligence
 bcrypt==5.0.0
     # via finlen-be
 cachecontrol==0.14.4
@@ -41,8 +54,14 @@ cryptography==50.0.1
     # via
     #   google-auth
     #   pyjwt
+deprecation==2.1.0
+    # via
+    #   postgrest
+    #   storage3
 detect-installer==0.1.0
     # via fastapi-cloud-cli
+distro==1.9.0
+    # via google-genai
 dnspython==2.8.0
     # via email-validator
 email-validator==2.3.0
@@ -61,6 +80,10 @@ fastar==0.12.0
     #   fastapi-cloud-cli
 firebase-admin==7.5.0
     # via finlen-be
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
 google-api-core==2.36.0
     # via
     #   firebase-admin
@@ -73,6 +96,7 @@ google-auth==2.57.1
     #   google-cloud-core
     #   google-cloud-firestore
     #   google-cloud-storage
+    #   google-genai
 google-cloud-core==2.7.0
     # via
     #   google-cloud-firestore
@@ -85,6 +109,8 @@ google-crc32c==1.8.0
     # via
     #   google-cloud-storage
     #   google-resumable-media
+google-genai==2.23.0
+    # via finlen-be
 google-resumable-media==2.10.2
     # via google-cloud-storage
 googleapis-common-protos==1.75.3
@@ -118,6 +144,12 @@ httpx==0.28.1
     #   fastapi-cloud-cli
     #   finlen-be
     #   firebase-admin
+    #   google-genai
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-auth
+    #   supabase-functions
 hyperframe==6.1.0
     # via h2
 idna==3.19
@@ -126,6 +158,9 @@ idna==3.19
     #   email-validator
     #   httpx
     #   requests
+    #   yarl
+isodate==0.7.2
+    # via azure-ai-documentintelligence
 jinja2==3.1.6
     # via fastapi
 mako==1.4.1
@@ -140,8 +175,20 @@ mdurl==0.1.2
     # via markdown-it-py
 msgpack==1.2.2
     # via cachecontrol
+multidict==6.8.0
+    # via
+    #   aiohttp
+    #   yarl
 opentelemetry-api==1.44.0
     # via google-api-core
+packaging==26.3
+    # via deprecation
+postgrest==2.31.0
+    # via supabase
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
 proto-plus==1.28.4
     # via
     #   google-api-core
@@ -164,8 +211,13 @@ pydantic==2.13.5
     #   fastapi
     #   fastapi-cloud-cli
     #   finlen-be
+    #   google-genai
+    #   postgrest
     #   pydantic-extra-types
     #   pydantic-settings
+    #   realtime
+    #   storage3
+    #   supabase-auth
 pydantic-core==2.46.5
     # via pydantic
 pydantic-extra-types==2.11.1
@@ -180,6 +232,7 @@ pyjwt==2.13.0
     # via
     #   finlen-be
     #   firebase-admin
+    #   supabase-auth
 python-dotenv==1.2.3
     # via
     #   pydantic-settings
@@ -190,11 +243,16 @@ python-multipart==0.0.32
     #   finlen-be
 pyyaml==6.0.3
     # via uvicorn
+realtime==2.31.0
+    # via supabase
 requests==2.34.2
     # via
+    #   azure-core
     #   cachecontrol
     #   google-api-core
+    #   google-auth
     #   google-cloud-storage
+    #   google-genai
 rich==15.0.0
     # via
     #   rich-toolkit
@@ -209,26 +267,46 @@ sentry-sdk==2.68.1
     # via fastapi-cloud-cli
 shellingham==1.5.4
     # via typer
+sniffio==1.3.1
+    # via google-genai
 sqlalchemy==2.0.52
     # via
     #   alembic
     #   finlen-be
 starlette==1.6.0
     # via fastapi
+storage3==2.31.0
+    # via supabase
+strenum==0.4.15
+    # via supabase-functions
+supabase==2.31.0
+    # via finlen-be
+supabase-auth==2.31.0
+    # via supabase
+supabase-functions==2.31.0
+    # via supabase
+tenacity==9.1.4
+    # via google-genai
 typer==0.27.2
     # via
     #   fastapi-cli
     #   fastapi-cloud-cli
 typing-extensions==4.16.0
     # via
+    #   aiohttp
+    #   aiosignal
     #   alembic
     #   anyio
+    #   azure-ai-documentintelligence
+    #   azure-core
     #   fastapi
+    #   google-genai
     #   grpcio
     #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   pydantic-extra-types
+    #   realtime
     #   rich-toolkit
     #   sqlalchemy
     #   starlette
@@ -251,5 +329,15 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.2.0
     # via uvicorn
-websockets==17.1
-    # via uvicorn
+websockets==15.0.1
+    # via
+    #   google-genai
+    #   realtime
+    #   uvicorn
+yarl==1.24.5
+    # via
+    #   aiohttp
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-functions

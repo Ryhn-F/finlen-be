@@ -32,6 +32,9 @@ async def test_scenarios_listing_and_detail(client: AsyncClient):
     assert "max_turns" in detail
     # Ensure sensitive internal system prompt is NEVER exposed
     assert "system_prompt" not in detail
+    # Learning materials are always present (possibly empty list)
+    assert "learning_materials" in detail
+    assert isinstance(detail["learning_materials"], list)
 
     # 3. Non-existent scenario UUID
     non_existent = str(uuid.uuid4())

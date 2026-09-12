@@ -66,6 +66,16 @@ Under **Environment Variables** in the Vercel project configuration, add the fol
 > [!TIP]
 > **Supabase Serverless Connection**: In Supabase Dashboard, go to **Project Settings > Database > Connection Pooling**. Select **Transaction Mode** (Port `6543`). The backend automatically sets `statement_cache_size=0` when port `6543` or `pooler` is in the `DATABASE_URL`.
 
+#### Supabase Storage (Learning Material PDFs)
+| Variable Name | Value Description | Example / Recommended |
+| :--- | :--- | :--- |
+| `SUPABASE_URL` | Your Supabase project URL | `https://<project-ref>.supabase.co` |
+| `SUPABASE_KEY` | Supabase API key (anon or service role) used only to build public storage URLs | Found in **Project Settings > API** |
+| `SUPABASE_STORAGE_BUCKET` | Name of the public storage bucket containing learning material PDFs | `learning-materials` |
+
+> [!NOTE]
+> The bucket referenced by `SUPABASE_STORAGE_BUCKET` must be public (or the objects must be publicly readable) for `get_public_url` to return a usable link. If the bucket is private, switch to signed URLs instead.
+
 #### JWT Authentication
 | Variable Name | Value Description | Example / Recommended |
 | :--- | :--- | :--- |

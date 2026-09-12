@@ -302,6 +302,20 @@ Get comprehensive scenario details, including financial numbers, constraints, an
 | `initial_state` | `object` | Starting game stats (`collector_pressure`, `financial_risk`, etc.) |
 | `max_turns` | `integer` | Turn limit |
 | `created_at` | `string` (ISO-8601) | Timestamp |
+| `learning_materials` | `Array<LearningMaterialItem>` | Supplementary PDF materials linked to this scenario (see below) |
+
+`LearningMaterialItem`:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` (UUID) | Unique learning material ID |
+| `title` | `string` | Material title |
+| `description` | `string` or `null` | Optional summary |
+| `formal_file_url` | `string` or `null` | Public URL of the formal-version PDF, resolved from Supabase Storage using `formal_file_path` |
+| `brainrot_file_url` | `string` or `null` | Public URL of the brainrot-version PDF, resolved from Supabase Storage using `brainrot_file_path` |
+| `source_name` | `string` or `null` | Original source attribution |
+| `source_url` | `string` or `null` | Original source link |
+| `created_at` | `string` (ISO-8601) | Timestamp |
 
 #### Response Example
 ```json
@@ -333,7 +347,19 @@ Get comprehensive scenario details, including financial numbers, constraints, an
     "current_stage": "opening"
   },
   "max_turns": 10,
-  "created_at": "2026-09-06T13:10:00.000Z"
+  "created_at": "2026-09-06T13:10:00.000Z",
+  "learning_materials": [
+    {
+      "id": "8f2e6b1a-1234-4abc-9e21-9f6a4e2d1234",
+      "title": "Understanding Debt Collection Rights",
+      "description": "A plain-language guide to OJK debt collection regulations.",
+      "formal_file_url": "https://<project-ref>.supabase.co/storage/v1/object/public/learning-materials/aggressive-debt-collector/formal.pdf",
+      "brainrot_file_url": "https://<project-ref>.supabase.co/storage/v1/object/public/learning-materials/aggressive-debt-collector/brainrot.pdf",
+      "source_name": "OJK",
+      "source_url": "https://ojk.go.id/",
+      "created_at": "2026-09-12T10:00:00.000Z"
+    }
+  ]
 }
 ```
 

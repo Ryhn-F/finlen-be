@@ -271,6 +271,60 @@ scenario and scenario_id appear to represent overlapping concepts.
 If scenario_id is authoritative, consider removing scenario or renaming it to something explicit such as scenario_snapshot.
 If historical scenario data must remain unchanged after a scenario is edited, retaining a snapshot column may be appropriate.
 Consider adding an index on user_id, scenario_id, and possibly created_at for common session-history queries.
+public.learning_materials
+Stores supplementary PDF learning materials (a "formal" and a "brainrot" version) associated with a scenario. The actual PDF files are stored in Supabase Storage; only the storage file paths are persisted here. Public URLs are resolved at request time by the API using the Supabase client.
+
+Columns
+id
+Type: uuid
+Required: Yes
+Primary key: Yes
+Default: gen_random_uuid()
+Description: Unique identifier for the learning material.
+scenario_id
+Type: uuid
+Required: Yes
+Description: Scenario this material belongs to.
+Foreign key: scenarios.id
+On delete: CASCADE
+title
+Type: varchar(255)
+Required: Yes
+Description: Display title of the material.
+description
+Type: text
+Required: No
+Description: Optional summary of the material.
+formal_file_path
+Type: text
+Required: Yes
+Description: Supabase Storage object path for the formal-version PDF (not a public URL).
+brainrot_file_path
+Type: text
+Required: Yes
+Description: Supabase Storage object path for the brainrot-version PDF (not a public URL).
+source_name
+Type: varchar(255)
+Required: No
+Description: Attribution for the original source of the material.
+source_url
+Type: text
+Required: No
+Description: Link to the original source.
+created_at
+Type: timestamptz
+Required: Yes
+Default: now()
+updated_at
+Type: timestamptz
+Required: Yes
+Default: now()
+
+Constraints
+Primary key: learning_materials_pkey on id
+Foreign key to scenarios.id, ON DELETE CASCADE
+Index on scenario_id
+
 public.alembic_version
 Tracks the version of the database schema managed by Alembic migrations.
 

@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     FIREBASE_CLIENT_EMAIL: str | None = None
     FIREBASE_CLIENT_ID: str | None = None
 
+    # Supabase (Storage — used to build public URLs for learning material PDFs)
+    SUPABASE_URL: str | None = None
+    SUPABASE_KEY: str | None = None
+    SUPABASE_STORAGE_BUCKET: str = "learning-materials"
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 

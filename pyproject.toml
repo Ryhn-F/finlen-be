@@ -22,6 +22,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "python-multipart>=0.0.20",
     "sqlalchemy[asyncio]>=2.0.38",
+    "supabase>=2.31.0",
 ]
 
 [project.scripts]
