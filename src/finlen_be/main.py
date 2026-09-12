@@ -62,6 +62,10 @@ app = FastAPI(
             "name": "Roleplay",
             "description": "Interactive roleplay sessions, AI evaluations, stat tracking, and completion",
         },
+        {
+            "name": "Document Analyzer",
+            "description": "Smart Document Analyzer — AI-powered financial document parsing and risk assessment",
+        },
     ],
 )
 

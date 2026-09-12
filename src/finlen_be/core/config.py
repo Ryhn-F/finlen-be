@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     AI_MODEL: str | None = None
     AI_REQUEST_TIMEOUT_SECONDS: float = 45.0
 
+    # Azure AI Document Intelligence
+    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: str | None = None
+    AZURE_DOCUMENT_INTELLIGENCE_KEY: str | None = None
+
+    # Smart Document Analyzer
+    DOCUMENT_MAX_FILE_SIZE_MB: int = 10
+    DOCUMENT_ANALYSIS_TIMEOUT_SECONDS: int = 60
+    GEMINI_MAX_OUTPUT_TOKENS: int = 4096
+
     # Firebase
     FIREBASE_CREDENTIALS_PATH: str  | None = None
     FIREBASE_PROJECT_ID: str | None = None
@@ -43,6 +52,34 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def azure_document_intelligence_endpoint(self) -> str | None:
+        return self.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+
+    @property
+    def azure_document_intelligence_key(self) -> str | None:
+        return self.AZURE_DOCUMENT_INTELLIGENCE_KEY
+
+    @property
+    def gemini_api_key(self) -> str | None:
+        return self.GEMINI_API_KEY
+
+    @property
+    def gemini_model(self) -> str:
+        return self.GEMINI_MODEL or self.AI_MODEL or "gemini-2.5-flash"
+
+    @property
+    def document_max_file_size_mb(self) -> int:
+        return self.DOCUMENT_MAX_FILE_SIZE_MB
+
+    @property
+    def document_analysis_timeout_seconds(self) -> int:
+        return self.DOCUMENT_ANALYSIS_TIMEOUT_SECONDS
+
+    @property
+    def gemini_max_output_tokens(self) -> int:
+        return self.GEMINI_MAX_OUTPUT_TOKENS
 
     @property
     def cors_origins_list(self) -> List[str]:

@@ -9,6 +9,10 @@ from finlen_be.core.database import get_db
 from finlen_be.core.security import decode_access_token
 from finlen_be.models.user import User
 from finlen_be.services.auth_service import AuthService, auth_service
+from finlen_be.services.document_analyzer_service import (
+    DocumentAnalyzerService,
+    document_analyzer_service,
+)
 from finlen_be.services.roleplay_service import RoleplayService, roleplay_service
 from finlen_be.services.scenario_service import ScenarioService, scenario_service
 
@@ -63,3 +67,4 @@ CurrentUserDep = Annotated[User, Depends(get_current_user)]
 AuthServiceDep = Annotated[AuthService, Depends(lambda: auth_service)]
 ScenarioServiceDep = Annotated[ScenarioService, Depends(lambda: scenario_service)]
 RoleplayServiceDep = Annotated[RoleplayService, Depends(lambda: roleplay_service)]
+DocumentAnalyzerServiceDep = Annotated[DocumentAnalyzerService, Depends(lambda: document_analyzer_service)]

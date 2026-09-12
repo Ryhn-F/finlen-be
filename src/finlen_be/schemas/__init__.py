@@ -20,6 +20,13 @@ from finlen_be.schemas.roleplay import (
     SessionCompleteResponse,
     UserProgressionUpdate,
 )
+from finlen_be.schemas.analyzer import (
+    DocumentAnalysis,
+    DocumentAnalysisResponse,
+    FinancialLiteracyConcept,
+    FinancialTerms,
+    RiskFactor,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -43,4 +50,9 @@ __all__ = [
     "SessionDetailResponse",
     "SessionCompleteResponse",
     "UserProgressionUpdate",
+    "FinancialTerms",
+    "RiskFactor",
+    "FinancialLiteracyConcept",
+    "DocumentAnalysis",
+    "DocumentAnalysisResponse",
 ]

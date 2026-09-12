@@ -19,7 +19,8 @@ This document provides complete, machine-readable (for AI coding agents) and hum
    - [Roleplay: Send Message (Turn Evaluation)](#48-post-apiv1roleplaysessionssession_idmessages)
    - [Roleplay: Get Conversation Messages](#49-get-apiv1roleplaysessionssession_idmessages)
    - [Roleplay: Complete Session](#410-post-apiv1roleplaysessionssession_idcomplete)
-   - [System: Health & Status](#411-system--health-endpoints)
+   - [Analyzer: Analyze Document](#411-post-apiv1analyzerdocuments)
+   - [System: Health & Status](#412-system--health-endpoints)
 5. [Data Models & Schema Glossary](#5-data-models--schema-glossary)
 6. [Scoring & Progression Rules](#6-scoring--progression-rules)
 7. [End-to-End cURL Workflow Example](#7-end-to-end-curl-workflow-example)
@@ -659,7 +660,89 @@ Finalize a roleplay session. Updates session status to `"completed"`, calculates
 
 ---
 
-### 4.11 System & Health Endpoints
+### 4.11 POST `/api/v1/analyzer/documents`
+
+Upload a financial document (PDF, JPEG, or PNG) for stateless OCR extraction via Azure AI Document Intelligence and structured financial literacy analysis via Google Gemini.
+
+- **Authentication**: Bearer Token required
+- **Content-Type**: `multipart/form-data`
+- **Status Code**: `200 OK`
+
+#### Request Parameters
+| Field | Type | Required | Constraints | Description |
+|---|---|---|---|---|
+| `file` | `binary` (UploadFile) | **Yes** | PDF, JPEG, PNG, max 10MB | Uploaded financial agreement, bill, statement, or contract |
+
+#### Request Example
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/analyzer/documents \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F "file=@loan-agreement.pdf"
+```
+
+#### Response Body Schema (`200 OK`)
+| Field | Type | Description |
+|---|---|---|
+| `analysis` | `DocumentAnalysis` | Complete financial literacy analysis |
+| `analysis.document_type` | `string` | Classification (e.g. `"loan_agreement"`, `"paylater_statement"`) |
+| `analysis.summary` | `string` | Plain-language Indonesian summary of the terms |
+| `analysis.financial_terms` | `FinancialTerms` | Authoritative numbers (principal, interest rate, due date, currency) |
+| `analysis.risk_level` | `string` | `"low"`, `"medium"`, `"high"`, `"critical"`, or `"unknown"` |
+| `analysis.risk_factors` | `Array<RiskFactor>` | Specific terms increasing repayment risk |
+| `analysis.red_flags` | `Array<string>` | High-priority warnings or predatory terms |
+| `analysis.recommended_actions` | `Array<string>` | Actionable verification steps before signing/paying |
+| `analysis.financial_literacy` | `Array<FinancialLiteracyConcept>` | Key concepts and educational takeaways |
+
+#### Response Example
+```json
+{
+  "analysis": {
+    "document_type": "loan_agreement",
+    "summary": "Dokumen menunjukkan pinjaman sebesar Rp3.000.000 dengan bunga 5% per bulan.",
+    "financial_terms": {
+      "principal": 3000000.0,
+      "interest_rate": 5.0,
+      "interest_period": "monthly",
+      "due_date": "2026-09-15",
+      "currency": "IDR"
+    },
+    "risk_level": "high",
+    "risk_factors": [
+      {
+        "title": "Bunga bulanan tinggi",
+        "description": "Dokumen mencantumkan bunga sebesar 5% per bulan.",
+        "severity": "high"
+      }
+    ],
+    "red_flags": [
+      "Bunga bulanan relatif tinggi"
+    ],
+    "recommended_actions": [
+      "Periksa kembali seluruh biaya dan ketentuan pembayaran.",
+      "Hitung total kewajiban sebelum mengambil keputusan pembayaran."
+    ],
+    "financial_literacy": [
+      {
+        "concept": "Interest Rate",
+        "explanation": "Bunga bulanan dapat meningkatkan total kewajiban secara signifikan sehingga perlu dipahami sebelum mengambil keputusan."
+      }
+    ]
+  }
+}
+```
+
+#### Potential Error Codes
+- `400 Bad Request`: `{"detail": "Unsupported file format. Allowed formats: PDF, JPEG, PNG."}`
+- `401 Unauthorized`: Missing or invalid Bearer token.
+- `413 Request Entity Too Large`: `{"detail": "Document file size exceeds the maximum allowed limit."}`
+- `422 Unprocessable Entity`: `{"detail": "No readable text could be extracted from the document."}`
+- `502 Bad Gateway`: `{"detail": "Document OCR service is temporarily unavailable."}` or `{"detail": "Document analysis service is temporarily unavailable."}` or `{"detail": "Document analysis service returned an invalid response."}`
+- `504 Gateway Timeout`: `{"detail": "Document analysis timed out. Please try again."}`
+
+---
+
+### 4.12 System & Health Endpoints
 
 - `GET /health` -> `{"status": "healthy"}` (Status `200 OK`)
 - `GET /` -> Application metadata, status, and docs URL.
@@ -709,6 +792,39 @@ Finalize a roleplay session. Updates session status to `"completed"`, calculates
   "impulse_control": 54,    // Integer 0 to 100
   "decision_making": 56,    // Integer 0 to 100
   "financial_instinct": 56  // Integer 0 to 100 (Composite metric)
+}
+```
+
+### `DocumentAnalysisResponse` (Document Analyzer Output)
+```json
+{
+  "analysis": {
+    "document_type": "string",
+    "summary": "string",
+    "financial_terms": {
+      "principal": "float or null",
+      "interest_rate": "float or null",
+      "interest_period": "string or null",
+      "due_date": "string or null",
+      "currency": "string or null"
+    },
+    "risk_level": "low | medium | high | critical | unknown",
+    "risk_factors": [
+      {
+        "title": "string",
+        "description": "string",
+        "severity": "low | medium | high | critical"
+      }
+    ],
+    "red_flags": ["string"],
+    "recommended_actions": ["string"],
+    "financial_literacy": [
+      {
+        "concept": "string",
+        "explanation": "string"
+      }
+    ]
+  }
 }
 ```
 
