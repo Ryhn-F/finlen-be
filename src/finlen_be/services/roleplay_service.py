@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List
 import uuid
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finlen_be.models.roleplay_session import RoleplaySession
@@ -12,11 +12,16 @@ from finlen_be.models.user import User
 from finlen_be.schemas.roleplay import (
     CreateSessionRequest,
     CreateSessionResponse,
+    ProgressionChartPoint,
+    ProgressionChartResponse,
     RoleplayMessageItem,
     SendMessageRequest,
     SendMessageResponse,
     SessionCompleteResponse,
     SessionDetailResponse,
+    SessionHistoryDetailResponse,
+    SessionHistoryItem,
+    SessionHistoryResponse,
     SessionScores,
     SessionStateData,
 )
@@ -109,6 +114,120 @@ class RoleplayService:
             created_at=now,
             max_turns=scenario.max_turns,
         )
+
+    async def get_session_history(
+        self,
+        db: AsyncSession,
+        user: User,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> SessionHistoryResponse:
+        """Return the current user's persisted roleplay sessions, newest first."""
+        filters = (RoleplaySession.user_id == user.id,)
+        total_result = await db.execute(
+            select(func.count()).select_from(RoleplaySession).where(*filters)
+        )
+        total = total_result.scalar_one()
+
+        stmt = (
+            select(RoleplaySession, Scenario.title)
+            .outerjoin(Scenario, RoleplaySession.scenario_id == Scenario.id)
+            .where(*filters)
+            .order_by(RoleplaySession.created_at.desc(), RoleplaySession.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        items = [
+            SessionHistoryItem(
+                session_id=session.id,
+                scenario=session.scenario,
+                scenario_title=scenario_title or session.scenario.replace("-", " ").title(),
+                status=session.status,
+                average_score=session.financial_instinct_score,
+                xp_earned=session.xp_earned,
+                created_at=session.created_at,
+                completed_at=session.completed_at,
+            )
+            for session, scenario_title in result.all()
+        ]
+        return SessionHistoryResponse(items=items, total=total, limit=limit, offset=offset)
+
+    async def get_history_detail(
+        self,
+        db: AsyncSession,
+        user: User,
+        session_id: uuid.UUID,
+    ) -> SessionHistoryDetailResponse:
+        """Return durable historical results for one owned roleplay session."""
+        stmt = (
+            select(RoleplaySession, Scenario.title)
+            .outerjoin(Scenario, RoleplaySession.scenario_id == Scenario.id)
+            .where(RoleplaySession.id == session_id)
+        )
+        result = await db.execute(stmt)
+        record = result.one_or_none()
+
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+
+        session, scenario_title = record
+        if session.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not own this session",
+            )
+
+        scores = SessionScores(
+            critical_thinking=session.critical_thinking,
+            risk_awareness=session.risk_awareness,
+            impulse_control=session.impulse_control,
+            decision_making=session.decision_making,
+            financial_instinct=session.financial_instinct_score,
+        )
+        return SessionHistoryDetailResponse(
+            session_id=session.id,
+            scenario=session.scenario,
+            scenario_title=scenario_title or session.scenario.replace("-", " ").title(),
+            status=session.status,
+            scores=scores,
+            average_score=session.financial_instinct_score,
+            xp_earned=session.xp_earned,
+            created_at=session.created_at,
+            completed_at=session.completed_at,
+        )
+
+    async def get_progression_chart(
+        self,
+        db: AsyncSession,
+        user: User,
+        limit: int = 100,
+    ) -> ProgressionChartResponse:
+        """Return a bounded set of completed-session composite scores for charting."""
+        stmt = (
+            select(RoleplaySession)
+            .where(
+                RoleplaySession.user_id == user.id,
+                RoleplaySession.status == "completed",
+                RoleplaySession.completed_at.is_not(None),
+            )
+            .order_by(RoleplaySession.completed_at.desc(), RoleplaySession.id.desc())
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        recent_sessions = list(result.scalars())
+        points = [
+            ProgressionChartPoint(
+                session_id=session.id,
+                completed_at=session.completed_at,
+                average_score=session.financial_instinct_score,
+            )
+            for session in reversed(recent_sessions)
+        ]
+        return ProgressionChartResponse(points=points, count=len(points), limit=limit)
 
     async def get_session(
         self,

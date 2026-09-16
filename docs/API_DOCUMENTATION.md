@@ -16,6 +16,9 @@ This document provides complete, machine-readable (for AI coding agents) and hum
    - [Scenarios: Get Scenario Detail](#45-get-apiv1scenariosscenario_id)
    - [Roleplay: Create Session](#46-post-apiv1roleplaysessions)
    - [Roleplay: Get Session Details](#47-get-apiv1roleplaysessionssession_id)
+   - [Roleplay: List History](#47a-get-apiv1roleplayhistory)
+   - [Roleplay: Get History Detail](#47b-get-apiv1roleplayhistorysession_id)
+   - [Roleplay: Get Score Progression](#47c-get-apiv1roleplayhistoryprogression)
    - [Roleplay: Send Message (Turn Evaluation)](#48-post-apiv1roleplaysessionssession_idmessages)
    - [Roleplay: Get Conversation Messages](#49-get-apiv1roleplaysessionssession_idmessages)
    - [Roleplay: Complete Session](#410-post-apiv1roleplaysessionssession_idcomplete)
@@ -479,6 +482,113 @@ Retrieve the current state, status, and running score metrics for a session.
 #### Potential Error Codes
 - `403 Forbidden`: Authenticated user does not own this session.
 - `404 Not Found`: Session ID does not exist.
+
+---
+
+### 4.7a GET `/api/v1/roleplay/history`
+
+List roleplay sessions played by the authenticated user. Results are persisted PostgreSQL records, so they remain available independently of Firebase session state.
+
+- **Authentication**: Bearer Token required
+- **Query Parameters**:
+  - `limit` (`integer`, optional, default `20`, min `1`, max `100`): Maximum sessions to return.
+  - `offset` (`integer`, optional, default `0`, min `0`): Number of sessions to skip.
+- **Status Code**: `200 OK`
+
+#### Response Body Schema (`200 OK`)
+| Field | Type | Description |
+|---|---|---|
+| `items` | `Array<SessionHistoryItem>` | Sessions in descending creation-time order. |
+| `total` | `integer` | Total sessions owned by the current user. |
+| `limit` | `integer` | Applied page size. |
+| `offset` | `integer` | Applied pagination offset. |
+
+`SessionHistoryItem` fields: `session_id`, `scenario`, `scenario_title`, `status`, `average_score`, `xp_earned`, `created_at`, and `completed_at`. `average_score` is the persisted per-session composite financial-instinct score (`0..100`).
+
+#### Response Example
+```json
+{
+  "items": [
+    {
+      "session_id": "9f2122c3-c287-43be-a764-585a065f422b",
+      "scenario": "aggressive-debt-collector",
+      "scenario_title": "Aggressive Debt Collector",
+      "status": "completed",
+      "average_score": 69,
+      "xp_earned": 145,
+      "created_at": "2026-09-06T13:15:00.000Z",
+      "completed_at": "2026-09-06T13:25:00.000Z"
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+---
+
+### 4.7b GET `/api/v1/roleplay/history/{session_id}`
+
+Get the durable historical results for a single roleplay session. Unlike the live session-detail endpoint, this endpoint reads only persisted PostgreSQL data and does not require Firebase runtime state.
+
+- **Authentication**: Bearer Token required
+- **Path Parameter**: `session_id` (`UUID`)
+- **Status Code**: `200 OK`
+
+#### Response Body Schema (`200 OK`)
+| Field | Type | Description |
+|---|---|---|
+| `session_id` | `string` (UUID) | Session identifier. |
+| `scenario` | `string` | Persisted scenario slug. |
+| `scenario_title` | `string` | Scenario title, with a slug-derived fallback for deleted scenarios. |
+| `status` | `string` | Session status. |
+| `scores` | `SessionScores` | Final or current persisted skill scores. |
+| `average_score` | `integer` | Persisted composite score (`0..100`) used in progression charts. |
+| `xp_earned` | `integer` | Session XP. |
+| `created_at` | `string` (ISO-8601) | Session creation timestamp. |
+| `completed_at` | `string` (ISO-8601) or `null` | Completion timestamp. |
+
+#### Potential Error Codes
+- `403 Forbidden`: Authenticated user does not own this session.
+- `404 Not Found`: Session ID does not exist.
+
+---
+
+### 4.7c GET `/api/v1/roleplay/history/progression`
+
+Return chart-ready progression data for the authenticated user. Only the most recent completed sessions with a completion timestamp are included, returned chronologically from oldest to newest within the requested window.
+
+- **Authentication**: Bearer Token required
+- **Query Parameters**:
+  - `limit` (`integer`, optional, default `100`, min `1`, max `100`): Maximum number of most-recent completed sessions included in the chart.
+- **Status Code**: `200 OK`
+
+#### Response Body Schema (`200 OK`)
+| Field | Type | Description |
+|---|---|---|
+| `points` | `Array<ProgressionChartPoint>` | Chronological completed-session score points. |
+| `points[].session_id` | `string` (UUID) | Completed session identifier. |
+| `points[].completed_at` | `string` (ISO-8601) | Chart x-axis timestamp. |
+| `points[].average_score` | `integer` | Persisted session composite (`0..100`), the average of the four skill scores. |
+| `count` | `integer` | Number of chart points returned. |
+| `limit` | `integer` | Applied maximum number of recent completed sessions. |
+
+An account with no completed sessions receives `{"points": [], "count": 0, "limit": 100}`.
+
+#### Response Example
+```json
+{
+  "points": [
+    {
+      "session_id": "9f2122c3-c287-43be-a764-585a065f422b",
+      "completed_at": "2026-09-06T13:25:00.000Z",
+      "average_score": 69
+    }
+  ],
+  "count": 1
+}
+```
 
 ---
 

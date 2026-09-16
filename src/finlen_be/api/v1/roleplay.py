@@ -9,11 +9,14 @@ from finlen_be.api.deps import CurrentUserDep, DbSessionDep, RoleplayServiceDep
 from finlen_be.schemas.roleplay import (
     CreateSessionRequest,
     CreateSessionResponse,
+    ProgressionChartResponse,
     RoleplayMessageItem,
     SendMessageRequest,
     SendMessageResponse,
     SessionCompleteResponse,
     SessionDetailResponse,
+    SessionHistoryDetailResponse,
+    SessionHistoryResponse,
 )
 
 router = APIRouter(prefix="/roleplay", tags=["Roleplay"])
@@ -52,6 +55,104 @@ async def create_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while creating the session.",
+        )
+
+
+@router.get(
+    "/history",
+    response_model=SessionHistoryResponse,
+    summary="Get roleplay history",
+    description="Retrieve the authenticated user's persisted roleplay sessions, newest first.",
+    responses={500: {"description": "Internal server error"}},
+)
+async def get_session_history(
+    db: DbSessionDep,
+    current_user: CurrentUserDep,
+    service: RoleplayServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100, description="Max sessions to fetch")] = 20,
+    offset: Annotated[int, Query(ge=0, description="Pagination offset")] = 0,
+) -> SessionHistoryResponse:
+    try:
+        return await service.get_session_history(db, current_user, limit=limit, offset=offset)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error fetching roleplay history: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve roleplay history due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error fetching roleplay history: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching roleplay history.",
+        )
+
+
+@router.get(
+    "/history/progression",
+    response_model=ProgressionChartResponse,
+    summary="Get roleplay score progression",
+    description="Retrieve chronological completed-session average scores for rendering a progression chart.",
+    responses={500: {"description": "Internal server error"}},
+)
+async def get_progression_chart(
+    db: DbSessionDep,
+    current_user: CurrentUserDep,
+    service: RoleplayServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100, description="Max recent completed sessions to chart")] = 100,
+) -> ProgressionChartResponse:
+    try:
+        return await service.get_progression_chart(db, current_user, limit=limit)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error fetching score progression: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve score progression due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error fetching score progression: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching score progression.",
+        )
+
+
+@router.get(
+    "/history/{session_id}",
+    response_model=SessionHistoryDetailResponse,
+    summary="Get roleplay history detail",
+    description="Retrieve durable historical results for one owned roleplay session without requiring Firebase state.",
+    responses={
+        403: {"description": "Access denied — session belongs to another user"},
+        404: {"description": "Session not found"},
+        500: {"description": "Internal server error"},
+    },
+)
+async def get_history_detail(
+    session_id: Annotated[uuid.UUID, Path(description="UUID of the roleplay session")],
+    db: DbSessionDep,
+    current_user: CurrentUserDep,
+    service: RoleplayServiceDep,
+) -> SessionHistoryDetailResponse:
+    try:
+        return await service.get_history_detail(db, current_user, session_id)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error("Database error fetching history session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve roleplay history detail due to a database error.",
+        )
+    except Exception as e:
+        logger.error("Unexpected error fetching history session %s: %s", session_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching roleplay history detail.",
         )
 
 

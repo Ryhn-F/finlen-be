@@ -2,18 +2,18 @@ from typing import Any, Dict, List
 
 SEED_SCENARIOS: List[Dict[str, Any]] = [
     {
-        "title": "Aggressive Debt Collector",
+        "title": "Penagih Utang yang Agresif",
         "slug": "aggressive-debt-collector",
         "category": "debt",
         "difficulty": "medium",
-        "npc_role": "Aggressive Debt Collector",
+        "npc_role": "Penagih Utang yang Agresif",
         "description": (
-            "You are currently facing financial difficulties after recently losing your job. "
-            "You have an outstanding loan of Rp3,000,000 that has been overdue for two months. "
-            "The loan carries a 5% interest rate with a repayment period of 12 months. "
-            "An aggressive debt collector contacts you and pressures you to make an immediate payment. "
-            "Throughout the conversation, you must evaluate the collector's claims, avoid impulsive decisions, "
-            "identify financial risks, and negotiate a reasonable solution."
+            "Saat ini Anda mengalami kesulitan keuangan setelah baru-baru ini kehilangan pekerjaan. "
+            "Anda memiliki pinjaman yang belum lunas sebesar Rp3.000.000 yang sudah menunggak selama dua bulan. "
+            "Pinjaman ini memiliki bunga 5% dengan jangka waktu pelunasan 12 bulan. "
+            "Seorang penagih utang yang agresif menghubungi Anda dan menekan Anda untuk segera melakukan pembayaran. "
+            "Selama percakapan, Anda harus mengevaluasi klaim penagih, menghindari keputusan impulsif, "
+            "mengidentifikasi risiko keuangan, dan menegosiasikan solusi yang wajar."
         ),
         "financial_context": {
             "loan_amount": 3000000,
@@ -27,8 +27,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "monthly_essential_expenses": 1200000,
         },
         "objective": (
-            "Recognize financial risk, avoid impulsive financial decisions, "
-            "verify claims, negotiate responsibly, and evaluate repayment options."
+            "Mengenali risiko keuangan, menghindari keputusan keuangan yang impulsif, "
+            "memverifikasi klaim, bernegosiasi secara bertanggung jawab, dan mengevaluasi opsi pelunasan."
         ),
         "initial_state": {
             "collector_pressure": 7,
@@ -40,24 +40,24 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Budi', an aggressive and persistent debt collector from a financial recovery agency. "
-            "The user owes Rp3,000,000 overdue for 2 months with 5% interest after losing their job. "
-            "Your persona: demanding, authoritative, creating urgency ('pay today or face field officers/legal consequences'), "
-            "yet you must abide by reasonable negotiation if the user remains calm, requests official contract verification, "
-            "and proposes a realistic restructuring plan. Do NOT fabricate numbers outside Rp3,000,000 or 5% interest."
+            "Anda berperan sebagai 'Budi', seorang penagih utang yang agresif dan gencar dari lembaga penagihan keuangan. "
+            "Pengguna menunggak Rp3.000.000 selama 2 bulan dengan bunga 5% setelah kehilangan pekerjaan. "
+            "Persona Anda: menuntut, otoritatif, menciptakan urgensi ('bayar hari ini atau berhadapan dengan petugas lapangan/konsekuensi hukum'), "
+            "namun Anda harus tetap mengikuti negosiasi yang wajar jika pengguna tetap tenang, meminta verifikasi kontrak resmi, "
+            "dan mengajukan rencana restrukturisasi yang realistis. JANGAN mengada-ada angka di luar Rp3.000.000 atau bunga 5%."
         ),
     },
     {
-        "title": "Illegal Pinjol Blackmail Threat",
+        "title": "Ancaman Pemerasan Pinjol Ilegal",
         "slug": "illegal-pinjol-threat",
         "category": "debt",
         "difficulty": "hard",
-        "npc_role": "Predatory Illegal Online Loan Collector",
+        "npc_role": "Penagih Pinjaman Online Ilegal yang Predator",
         "description": (
-            "You borrowed Rp1,500,000 from an unregistered peer-to-peer loan app (Pinjol Ilegal). "
-            "Only Rp1,000,000 was disbursed, but after just 7 days, they are demanding Rp2,800,000 with exorbitant daily late fees. "
-            "The collector threatens to blast your contact list and broadcast defamatory photos if you do not transfer funds within 1 hour. "
-            "You must handle panic, stand your ground against illegal threats, refuse blackmail payments, and seek legal/OJK guidance."
+            "Anda meminjam Rp1.500.000 dari aplikasi pinjaman peer-to-peer yang tidak terdaftar (Pinjol Ilegal). "
+            "Hanya Rp1.000.000 yang benar-benar dicairkan, namun setelah hanya 7 hari, mereka menuntut Rp2.800.000 dengan denda keterlambatan harian yang sangat tinggi. "
+            "Penagih mengancam akan menyebarkan daftar kontak Anda dan menyiarkan foto yang mencemarkan nama baik jika Anda tidak mentransfer dana dalam waktu 1 jam. "
+            "Anda harus mengendalikan kepanikan, bertahan menghadapi ancaman ilegal, menolak membayar pemerasan, dan mencari panduan hukum/OJK."
         ),
         "financial_context": {
             "loan_amount": 1500000,
@@ -69,8 +69,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "stressed_college_student",
         },
         "objective": (
-            "Identify predatory and illegal lending practices, refuse panic-driven transfers, "
-            "protect personal data, and report to authorities (OJK/Polri) rather than taking new loans to cover debt."
+            "Mengidentifikasi praktik pinjaman predator dan ilegal, menolak transfer yang didorong kepanikan, "
+            "melindungi data pribadi, dan melapor kepada pihak berwenang (OJK/Polri) daripada mengambil pinjaman baru untuk menutupi utang."
         ),
         "initial_state": {
             "collector_pressure": 9,
@@ -82,23 +82,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Hendra', an intimidating collector for an illegal unregistered loan application. "
-            "You use psychological intimidation, short deadlines ('within 30 minutes'), and threats of contacting phone contacts. "
-            "If the user panics or offers to borrow from another pinjol, escalate the trap. "
-            "If the user remains assertive, mentions OJK/police, demands legal registration, or refuses terror tactics calmly, "
-            "your psychological leverage weakens."
+            "Anda berperan sebagai 'Hendra', seorang penagih yang mengintimidasi dari aplikasi pinjaman ilegal yang tidak terdaftar. "
+            "Anda menggunakan intimidasi psikologis, tenggat waktu singkat ('dalam 30 menit'), dan ancaman menghubungi kontak telepon. "
+            "Jika pengguna panik atau menawarkan untuk meminjam dari pinjol lain, tingkatkan jebakannya. "
+            "Jika pengguna tetap tegas, menyebut OJK/polisi, menuntut legalitas pendaftaran resmi, atau menolak taktik teror dengan tenang, "
+            "tekanan psikologis Anda melemah."
         ),
     },
     {
-        "title": "Credit Card Minimum Payment Trap",
+        "title": "Jebakan Pembayaran Minimum Kartu Kredit",
         "slug": "credit-card-minimum-payment-trap",
         "category": "debt",
         "difficulty": "medium",
-        "npc_role": "Bank Retention & Telesales Officer",
+        "npc_role": "Petugas Retensi & Telesales Bank",
         "description": (
-            "Your credit card has an accumulated balance of Rp15,000,000 with a 2.25% monthly compounding interest rate (over 27% APR). "
-            "A bank customer service officer calls offering a promotional 'pay only the minimum Rp750,000' and offering additional credit limit extension. "
-            "You must recognize how compounding interest works, resist the illusion of affordability through minimum payments, and negotiate a fixed installment conversion."
+            "Kartu kredit Anda memiliki saldo terutang sebesar Rp15.000.000 dengan bunga majemuk bulanan 2,25% (lebih dari 27% per tahun). "
+            "Seorang petugas customer service bank menelepon menawarkan promo 'bayar minimum saja Rp750.000' dan menawarkan tambahan perpanjangan limit kredit. "
+            "Anda harus mengenali cara kerja bunga majemuk, menahan godaan ilusi keterjangkauan melalui pembayaran minimum, dan menegosiasikan konversi ke cicilan tetap."
         ),
         "financial_context": {
             "total_balance": 15000000,
@@ -109,8 +109,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "early_career_professional",
         },
         "objective": (
-            "Understand the math behind compound interest, calculate long-term debt payoff, "
-            "reject misleading promotional minimum payments, and convert high-interest revolving debt into fixed low-interest installments."
+            "Memahami perhitungan di balik bunga majemuk, menghitung pelunasan utang jangka panjang, "
+            "menolak pembayaran minimum promosi yang menyesatkan, dan mengonversi utang bergulir berbunga tinggi menjadi cicilan tetap berbunga rendah."
         ),
         "initial_state": {
             "collector_pressure": 4,
@@ -122,22 +122,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Santi', an amicable yet sales-driven bank officer. "
-            "You subtly nudge the user into paying only the minimum payment of Rp750,000 while offering a higher limit, "
-            "downplaying the heavy compound interest accumulating on the remaining Rp14,250,000 balance. "
-            "Reward the user if they ask about total interest costs and insist on a fixed installment restructuring."
+            "Anda berperan sebagai 'Santi', seorang petugas bank yang ramah namun berorientasi penjualan. "
+            "Anda secara halus mendorong pengguna untuk hanya membayar minimum Rp750.000 sambil menawarkan limit yang lebih tinggi, "
+            "meremehkan bunga majemuk berat yang terus bertambah pada sisa saldo Rp14.250.000. "
+            "Beri penghargaan kepada pengguna jika mereka menanyakan total biaya bunga dan bersikeras meminta restrukturisasi ke cicilan tetap."
         ),
     },
     {
-        "title": "Impulsive Midnight Flash Sale FOMO",
+        "title": "FOMO Flash Sale Tengah Malam yang Impulsif",
         "slug": "impulsive-flash-sale-fomo",
         "category": "spending",
         "difficulty": "easy",
-        "npc_role": "High-Pressure Live Shopping Host",
+        "npc_role": "Host Live Shopping dengan Tekanan Tinggi",
         "description": (
-            "It is 11:45 PM on 11.11. An e-commerce live stream host is shouting that a Rp8,500,000 flagship smartphone is discounted to Rp5,999,000 "
-            "for the next 5 minutes only with only 3 units left. You already have a fully functioning phone, and your remaining discretionary budget this month is only Rp1,200,000. "
-            "The app nudges you to use a 12-month installment. You must exercise impulse control and separate wants from needs."
+            "Sekarang pukul 23:45 pada tanggal 11.11. Seorang host live streaming e-commerce berteriak bahwa smartphone flagship senilai Rp8.500.000 "
+            "didiskon menjadi Rp5.999.000 hanya untuk 5 menit ke depan dengan sisa 3 unit saja. Anda sudah memiliki ponsel yang masih berfungsi penuh, "
+            "dan sisa anggaran diskresioner Anda bulan ini hanya Rp1.200.000. Aplikasi mendorong Anda untuk menggunakan cicilan 12 bulan. "
+            "Anda harus melatih kontrol impuls dan membedakan keinginan dari kebutuhan."
         ),
         "financial_context": {
             "item_price_discounted": 5999000,
@@ -148,8 +149,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "fomo_tempted_shopper",
         },
         "objective": (
-            "Practice the 48-hour cooling-off rule for non-essential purchases, evaluate opportunity cost, "
-            "and resist artificial scarcity and countdown timers."
+            "Melatih aturan masa tenang 48 jam untuk pembelian non-esensial, mengevaluasi biaya peluang (opportunity cost), "
+            "dan menahan diri dari kelangkaan buatan serta hitungan mundur."
         ),
         "initial_state": {
             "collector_pressure": 6,
@@ -161,22 +162,22 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 8,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Rico', an energetic live streamer selling electronics with intense FOMO tactics: "
-            "countdown timers, 'claim voucher now', and 'treat yourself, you work hard!' "
-            "Test whether the user succumbs to emotional justifications or applies strict budgeting principles."
+            "Anda berperan sebagai 'Rico', seorang live streamer yang energik menjual elektronik dengan taktik FOMO yang intens: "
+            "hitungan mundur, 'klaim voucher sekarang', dan 'reward diri sendiri, kamu sudah kerja keras!' "
+            "Uji apakah pengguna tunduk pada pembenaran emosional atau menerapkan prinsip penganggaran yang ketat."
         ),
     },
     {
-        "title": "Emergency Medical Expense Financing",
+        "title": "Pembiayaan Darurat Biaya Medis",
         "slug": "emergency-medical-financing",
         "category": "emergency",
         "difficulty": "hard",
-        "npc_role": "Hospital Billing Administrator",
+        "npc_role": "Administrator Penagihan Rumah Sakit",
         "description": (
-            "Your parent is admitted for urgent gallbladder surgery requiring an immediate deposit of Rp12,000,000. "
-            "You have Rp4,000,000 in your emergency fund. The hospital billing officer presents options: full private payment, "
-            "a third-party high-interest medical loan partner, or BPJS Kesehatan verification which requires paperwork coordination. "
-            "Under emotional distress, you must make a level-headed decision without falling into predatory financing."
+            "Orang tua Anda dirawat untuk operasi kandung empedu mendesak yang membutuhkan uang muka segera sebesar Rp12.000.000. "
+            "Anda memiliki Rp4.000.000 di dana darurat Anda. Petugas penagihan rumah sakit menyajikan opsi: pembayaran pribadi penuh, "
+            "mitra pinjaman medis pihak ketiga berbunga tinggi, atau verifikasi BPJS Kesehatan yang memerlukan koordinasi dokumen. "
+            "Dalam tekanan emosional, Anda harus membuat keputusan yang tenang tanpa terjerumus ke pembiayaan predator."
         ),
         "financial_context": {
             "hospital_bill": 12000000,
@@ -187,8 +188,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "emotionally_stressed_family_member",
         },
         "objective": (
-            "Navigate high-stress medical financial decisions, utilize public health insurance (BPJS/private policy) first, "
-            "negotiate hospital installment programs, and prevent debt spiral during family crises."
+            "Menavigasi keputusan keuangan medis yang penuh tekanan, memanfaatkan asuransi kesehatan publik (BPJS/polis pribadi) terlebih dahulu, "
+            "menegosiasikan program cicilan rumah sakit, dan mencegah spiral utang selama krisis keluarga."
         ),
         "initial_state": {
             "collector_pressure": 6,
@@ -200,23 +201,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Ibu Rina', an administrative hospital billing specialist. "
-            "You are professional but formal, explaining the urgent Rp12,000,000 deposit requirement. "
-            "You mention private payment or quick loan partner first, but if the user proactively inquires about BPJS coordination, "
-            "hospital payment plans, or emergency tier coverage, you guide them through the administrative paperwork."
+            "Anda berperan sebagai 'Ibu Rina', seorang spesialis penagihan administratif rumah sakit. "
+            "Anda profesional namun formal, menjelaskan kebutuhan uang muka mendesak sebesar Rp12.000.000. "
+            "Anda menyebutkan pembayaran pribadi atau mitra pinjaman cepat terlebih dahulu, tetapi jika pengguna secara proaktif menanyakan tentang "
+            "koordinasi BPJS, program pembayaran rumah sakit, atau cakupan tingkat darurat, Anda memandu mereka melalui proses administrasi."
         ),
     },
     {
-        "title": "High-Yield Guaranteed Investment Scam",
+        "title": "Penipuan Investasi Bergaransi dengan Imbal Hasil Tinggi",
         "slug": "high-yield-investment-scam",
         "category": "fraud",
         "difficulty": "hard",
-        "npc_role": "Charismatic Crypto / Forex 'Wealth Mentor'",
+        "npc_role": "'Mentor Kekayaan' Kripto/Forex yang Karismatik",
         "description": (
-            "An acquaintance introduces you to 'Doni', an extravagant trader showing luxury watches and leased sports cars on social media. "
-            "Doni offers an exclusive opportunity to invest in an automated algorithmic trading bot guaranteeing 25% monthly return risk-free, "
-            "backed by supposed offshore licenses. He urges you to deposit at least Rp10,000,000 today to lock in your VIP slot. "
-            "You must detect classic Ponzi scheme red flags, check OJK/Bappebti legality, and protect your capital."
+            "Seorang kenalan memperkenalkan Anda kepada 'Doni', seorang trader flamboyan yang memamerkan jam tangan mewah dan mobil sport sewaan di media sosial. "
+            "Doni menawarkan kesempatan eksklusif untuk berinvestasi dalam bot trading algoritmik otomatis yang menjamin imbal hasil 25% per bulan tanpa risiko, "
+            "didukung oleh lisensi luar negeri yang diklaimnya. Ia mendesak Anda untuk menyetorkan minimal Rp10.000.000 hari ini untuk mengamankan slot VIP Anda. "
+            "Anda harus mendeteksi tanda bahaya klasik skema Ponzi, memeriksa legalitas OJK/Bappebti, dan melindungi modal Anda."
         ),
         "financial_context": {
             "minimum_deposit": 10000000,
@@ -227,8 +228,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "aspirational_investor",
         },
         "objective": (
-            "Identify classic investment fraud patterns ('guaranteed high returns', 'exclusive VIP slots', vague mechanisms), "
-            "verify registration on official regulatory registries (OJK Alert Portal / Bappebti), and resist greed triggers."
+            "Mengidentifikasi pola penipuan investasi klasik ('imbal hasil tinggi bergaransi', 'slot VIP eksklusif', mekanisme yang tidak jelas), "
+            "memverifikasi pendaftaran pada lembaga regulator resmi (Portal Waspada Investasi OJK / Bappebti), dan menahan godaan keserakahan."
         ),
         "initial_state": {
             "collector_pressure": 5,
@@ -240,23 +241,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Doni', a smooth-talking Ponzi scheme promoter. "
-            "You use social proof, jargon like 'AI arbitrage' and 'institutional liquidity', and mock traditional bank deposits as 'for broke people'. "
-            "If the user asks for OJK/Bappebti license numbers, prospectus, or withdrawal terms, deflect with vague claims of international compliance. "
-            "Award high critical thinking if the user demands verifiable licensing and firmly declines."
+            "Anda berperan sebagai 'Doni', seorang promotor skema Ponzi yang pandai bicara. "
+            "Anda menggunakan social proof, jargon seperti 'arbitrase AI' dan 'likuiditas institusional', serta meremehkan deposito bank tradisional sebagai 'buat orang miskin'. "
+            "Jika pengguna meminta nomor lisensi OJK/Bappebti, prospektus, atau ketentuan penarikan dana, alihkan dengan klaim samar tentang kepatuhan internasional. "
+            "Berikan nilai pemikiran kritis tinggi jika pengguna menuntut lisensi yang dapat diverifikasi dan menolak dengan tegas."
         ),
     },
     {
-        "title": "Buy-Now-Pay-Later (BNPL) Snowball",
+        "title": "Efek Bola Salju Buy-Now-Pay-Later (BNPL)",
         "slug": "bnpl-snowball-crisis",
         "category": "spending",
         "difficulty": "medium",
-        "npc_role": "E-Commerce PayLater Recovery Agent",
+        "npc_role": "Agen Penagihan PayLater E-Commerce",
         "description": (
-            "Over the last 6 months, you split multiple small purchases (coffee, clothes, gadget accessories) using PayLater. "
-            "Now 5 different installment schedules collide on the 25th, totaling Rp4,200,000 against your net salary of Rp5,000,000. "
-            "Late fees and platform admin charges are accumulating daily. A polite but firm BNPL representative reaches out. "
-            "You must stop micro-borrowing leaks, prioritize cash flow for survival essentials, and structure payoff."
+            "Selama 6 bulan terakhir, Anda mencicil berbagai pembelian kecil (kopi, baju, aksesori gadget) menggunakan PayLater. "
+            "Sekarang 5 jadwal cicilan yang berbeda bertabrakan pada tanggal 25, totalnya Rp4.200.000 dari gaji bersih Anda sebesar Rp5.000.000. "
+            "Denda keterlambatan dan biaya admin platform terus bertambah setiap hari. Seorang perwakilan BNPL yang sopan namun tegas menghubungi Anda. "
+            "Anda harus menghentikan kebocoran pinjaman mikro, memprioritaskan arus kas untuk kebutuhan pokok, dan menyusun struktur pelunasan."
         ),
         "financial_context": {
             "total_bnpl_due": 4200000,
@@ -267,8 +268,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "micro_debt_overwhelmed",
         },
         "objective": (
-            "Recognize the cognitive trap of frictionless micro-loans, prioritize debt avalanche/snowball payoff, "
-            "and create a bare-bones survival budget while communicating transparently with the creditor."
+            "Mengenali jebakan kognitif dari pinjaman mikro yang tanpa gesekan, memprioritaskan pelunasan dengan metode debt avalanche/snowball, "
+            "dan membuat anggaran bertahan hidup minimal sambil berkomunikasi secara transparan dengan kreditur."
         ),
         "initial_state": {
             "collector_pressure": 5,
@@ -280,22 +281,22 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Dian', an official PayLater customer service debt resolution agent. "
-            "You are formal, calm, but relentless about repayment deadlines. You notify the user that their SLIK OJK (credit score) "
-            "will be downgraded if payment isn't completed by Friday. Support restructuring if the user offers partial immediate payment "
-            "and disables future checkout credit."
+            "Anda berperan sebagai 'Dian', seorang agen resolusi utang customer service resmi PayLater. "
+            "Anda formal, tenang, namun tidak kenal ampun soal tenggat pembayaran. Anda memberi tahu pengguna bahwa skor kredit SLIK OJK mereka "
+            "akan diturunkan jika pembayaran tidak selesai sampai hari Jumat. Dukung restrukturisasi jika pengguna menawarkan pembayaran sebagian segera "
+            "dan menonaktifkan kredit checkout di masa depan."
         ),
     },
     {
-        "title": "Salary Advance Payday Loan",
+        "title": "Jebakan Pinjaman Gaji Talangan",
         "slug": "salary-advance-payday-trap",
         "category": "debt",
         "difficulty": "easy",
-        "npc_role": "Instant Cash Advance Representative",
+        "npc_role": "Perwakilan Pinjaman Talangan Instan",
         "description": (
-            "With two weeks left before payday and only Rp200,000 in your account, an instant cash app offers a 'Salary Advance' of Rp2,000,000. "
-            "However, the service deducts an upfront 12% admin fee (Rp240,000) and charges a 1% daily interest rate if not settled on your exact pay date. "
-            "The app agent pushes you to sign up in 1 click. You must calculate the effective annualized percentage rate (APR) and evaluate alternative frugal options."
+            "Dengan sisa dua minggu sebelum gajian dan hanya Rp200.000 di rekening Anda, sebuah aplikasi uang instan menawarkan 'Talangan Gaji' sebesar Rp2.000.000. "
+            "Namun, layanan ini memotong biaya admin di muka sebesar 12% (Rp240.000) dan mengenakan bunga harian 1% jika tidak dilunasi tepat pada tanggal gajian Anda. "
+            "Agen aplikasi mendesak Anda untuk mendaftar dalam 1 klik. Anda harus menghitung suku bunga tahunan efektif (APR) dan mengevaluasi opsi hemat alternatif."
         ),
         "financial_context": {
             "advance_amount": 2000000,
@@ -307,8 +308,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "cash_strapped_employee",
         },
         "objective": (
-            "Expose deceptive 'low flat fee' marketing, calculate true annualized borrowing costs, "
-            "and explore emergency budgeting adjustments without signing predatory payday contracts."
+            "Mengungkap pemasaran 'biaya flat rendah' yang menyesatkan, menghitung biaya pinjaman tahunan sebenarnya, "
+            "dan mengeksplorasi penyesuaian anggaran darurat tanpa menandatangani kontrak talangan gaji predator."
         ),
         "initial_state": {
             "collector_pressure": 4,
@@ -320,23 +321,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 8,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Kevin', a marketing telemarketer from an instant salary advance platform. "
-            "You emphasize 'convenience', 'no collateral', and 'treat yourself until payday'. "
-            "If the user asks about effective APR, penalties, or total repayment sum, be evasive with euphemisms like 'small platform fee'. "
-            "Evaluate if the user calculates true financing cost and walks away."
+            "Anda berperan sebagai 'Kevin', seorang telemarketer pemasaran dari platform talangan gaji instan. "
+            "Anda menekankan 'kemudahan', 'tanpa jaminan', dan 'reward diri sendiri sampai gajian'. "
+            "Jika pengguna menanyakan APR efektif, penalti, atau total jumlah pelunasan, bersikap mengelak dengan eufemisme seperti 'biaya platform kecil'. "
+            "Evaluasi apakah pengguna menghitung biaya pembiayaan sebenarnya dan mengurungkan diri."
         ),
     },
     {
-        "title": "Friend Guilt-Tripping for an Unsecured Loan",
+        "title": "Teman yang Memaksa dengan Rasa Bersalah demi Pinjaman Tanpa Jaminan",
         "slug": "friend-guilt-trip-loan",
         "category": "social",
         "difficulty": "medium",
-        "npc_role": "Close Friend with Financial Troubles",
+        "npc_role": "Teman Dekat dengan Masalah Keuangan",
         "description": (
-            "Your close university friend 'Farhan' calls in tears. He claims he owes Rp5,000,000 to urgent business suppliers and begs you to transfer "
-            "Rp5,000,000 from your emergency savings, promising to repay 'next week when his client pays'. "
-            "He has previously borrowed Rp500,000 and took 8 months to return it. He leverages friendship and emotional guilt ('you're my only hope'). "
-            "You must balance empathy with financial boundaries without destroying your own financial safety or friendships."
+            "Teman dekat Anda semasa kuliah, 'Farhan', menelepon sambil menangis. Ia mengaku berutang Rp5.000.000 kepada pemasok bisnis yang mendesak "
+            "dan memohon Anda untuk mentransfer Rp5.000.000 dari tabungan darurat Anda, berjanji akan melunasi 'minggu depan saat kliennya membayar'. "
+            "Ia sebelumnya pernah meminjam Rp500.000 dan butuh 8 bulan untuk mengembalikannya. Ia memanfaatkan pertemanan dan rasa bersalah emosional "
+            "('kamu satu-satunya harapanku'). Anda harus menyeimbangkan empati dengan batasan keuangan tanpa merusak keamanan finansial atau pertemanan Anda sendiri."
         ),
         "financial_context": {
             "amount_requested": 5000000,
@@ -346,8 +347,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "emotionally_conflicted_friend",
         },
         "objective": (
-            "Set healthy interpersonal financial boundaries, protect emergency savings from third-party risks, "
-            "and evaluate whether to give a non-repayable gift within budget or require written contractual terms."
+            "Menetapkan batasan keuangan interpersonal yang sehat, melindungi tabungan darurat dari risiko pihak ketiga, "
+            "dan mengevaluasi apakah akan memberikan hadiah yang tidak perlu dikembalikan sesuai anggaran atau meminta perjanjian tertulis."
         ),
         "initial_state": {
             "collector_pressure": 7,
@@ -359,23 +360,23 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Farhan', a close friend experiencing self-inflicted financial troubles. "
-            "You use emotional leverage, reminding the user of your past friendship favors, promising high returns or quick repayment. "
-            "If the user says 'no', act hurt and guilt-trip them. If the user offers a small unconditioned gift (e.g. Rp300,000) or refuses firmly with love, "
-            "acknowledge their mature boundaries."
+            "Anda berperan sebagai 'Farhan', seorang teman dekat yang mengalami masalah keuangan akibat perbuatannya sendiri. "
+            "Anda menggunakan pengaruh emosional, mengingatkan pengguna tentang bantuan pertemanan di masa lalu, menjanjikan imbal balik tinggi atau pelunasan cepat. "
+            "Jika pengguna menolak, berpura-pura terluka dan membuat mereka merasa bersalah. Jika pengguna menawarkan hadiah kecil tanpa syarat (misalnya Rp300.000) "
+            "atau menolak dengan tegas namun penuh kasih, akui kedewasaan batasan mereka."
         ),
     },
     {
-        "title": "Vehicle Financing Installment Pressure",
+        "title": "Tekanan Cicilan Pembiayaan Kendaraan",
         "slug": "vehicle-financing-pressure",
         "category": "debt",
         "difficulty": "medium",
-        "npc_role": "Aggressive Dealership Finance Officer",
+        "npc_role": "Petugas Pembiayaan Dealer yang Agresif",
         "description": (
-            "You visited a motorcycle dealership intending to purchase a practical Rp19,000,000 commuter bike for your new commute. "
-            "The finance officer 'Bayu' heavily pushes a sport motorcycle priced at Rp38,000,000, offering a 'Zero Down Payment' 5-year lease "
-            "with Rp1,350,000 monthly installments. In total, you would pay over Rp81,000,000! Your monthly salary is Rp4,500,000. "
-            "You must calculate total cost of ownership, resist prestige traps, and stay within prudent 20/4/10 vehicle guidelines."
+            "Anda mengunjungi dealer motor dengan niat membeli motor harian praktis senilai Rp19.000.000 untuk kebutuhan komuter baru Anda. "
+            "Petugas pembiayaan 'Bayu' dengan gencar mendorong motor sport senilai Rp38.000.000, menawarkan leasing 5 tahun 'Tanpa Uang Muka' "
+            "dengan cicilan bulanan Rp1.350.000. Totalnya, Anda akan membayar lebih dari Rp81.000.000! Gaji bulanan Anda adalah Rp4.500.000. "
+            "Anda harus menghitung total biaya kepemilikan, menahan jebakan gaya hidup, dan tetap berada dalam batas panduan kendaraan 20/4/10 yang bijak."
         ),
         "financial_context": {
             "intended_vehicle_price": 19000000,
@@ -388,8 +389,8 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
             "user_condition": "aspiring_vehicle_buyer",
         },
         "objective": (
-            "Calculate Total Cost of Ownership (TCO) including interest, depreciation, and insurance; "
-            "apply the 20/4/10 financial rule (20% down payment, max 4 years, max 10% monthly income), and reject predatory upsells."
+            "Menghitung Total Cost of Ownership (TCO) termasuk bunga, depresiasi, dan asuransi; "
+            "menerapkan aturan keuangan 20/4/10 (uang muka 20%, maksimal 4 tahun, maksimal 10% dari gaji bulanan), dan menolak penjualan berlebih yang predator."
         ),
         "initial_state": {
             "collector_pressure": 6,
@@ -401,10 +402,10 @@ SEED_SCENARIOS: List[Dict[str, Any]] = [
         "max_turns": 10,
         "is_active": True,
         "system_prompt": (
-            "You are roleplaying as 'Bayu', an aggressive automotive leasing broker. "
-            "You sell dreams, vanity, and low barrier entry ('DP 0 rupiah!'). "
-            "You conceal the 5-year total interest and focus solely on the 'affordable monthly installment'. "
-            "Reward the user if they demand the full amortization schedule, calculate the 81 million total, and refuse the bad deal."
+            "Anda berperan sebagai 'Bayu', seorang broker leasing otomotif yang agresif. "
+            "Anda menjual mimpi, gaya hidup, dan kemudahan masuk ('DP 0 rupiah!'). "
+            "Anda menyembunyikan total bunga 5 tahun dan hanya berfokus pada 'cicilan bulanan yang terjangkau'. "
+            "Beri penghargaan kepada pengguna jika mereka menuntut skedul amortisasi lengkap, menghitung total 81 juta, dan menolak kesepakatan buruk tersebut."
         ),
     },
 ]

@@ -91,6 +91,48 @@ class UserProgressionUpdate(BaseModel):
     financial_instinct: float
 
 
+class SessionHistoryItem(BaseModel):
+    session_id: uuid.UUID
+    scenario: str
+    scenario_title: str
+    status: str
+    average_score: int = Field(ge=0, le=100)
+    xp_earned: int = Field(ge=0)
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class SessionHistoryResponse(BaseModel):
+    items: List[SessionHistoryItem]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+
+
+class SessionHistoryDetailResponse(BaseModel):
+    session_id: uuid.UUID
+    scenario: str
+    scenario_title: str
+    status: str
+    scores: SessionScores
+    average_score: int = Field(ge=0, le=100)
+    xp_earned: int = Field(ge=0)
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class ProgressionChartPoint(BaseModel):
+    session_id: uuid.UUID
+    completed_at: datetime
+    average_score: int = Field(ge=0, le=100)
+
+
+class ProgressionChartResponse(BaseModel):
+    points: List[ProgressionChartPoint]
+    count: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+
+
 class SessionCompleteResponse(BaseModel):
     session_id: uuid.UUID
     status: str
