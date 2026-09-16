@@ -154,6 +154,7 @@ class FirebaseService:
         message: str,
         turn_number: int,
         evaluation: Optional[Dict[str, Any]] = None,
+        answer_choices: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Save a message under roleplay_sessions/{session_id}/messages."""
         msg_id = str(uuid.uuid4())
@@ -167,6 +168,8 @@ class FirebaseService:
         }
         if sender == "user" and evaluation is not None:
             payload["evaluation"] = evaluation
+        if sender == "npc" and answer_choices is not None:
+            payload["answer_choices"] = answer_choices
 
         cli = self.client
         if cli is not None:

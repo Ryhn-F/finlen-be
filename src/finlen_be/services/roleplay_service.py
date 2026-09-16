@@ -43,6 +43,38 @@ class RoleplayService:
         self.fb = fb_service or firebase_service
         self.ai = llm_service or ai_service
 
+    async def _get_current_answer_choices(
+        self,
+        session_id: str,
+        current_state: Dict[str, Any],
+        recent_messages: List[Dict[str, Any]] | None = None,
+    ) -> List[str]:
+        """Resolve choices from the latest NPC message, falling back to current state."""
+        messages = recent_messages
+        if messages is None:
+            messages = await self.fb.get_recent_messages(session_id, limit=10)
+
+        candidates: Any = None
+        for message in reversed(messages):
+            if message.get("sender") == "npc":
+                candidates = message.get("answer_choices")
+                break
+        if candidates is None:
+            candidates = current_state.get("answer_choices")
+
+        if (
+            isinstance(candidates, list)
+            and len(candidates) == 3
+            and all(isinstance(choice, str) and choice.strip() for choice in candidates)
+            and len({choice.strip().casefold() for choice in candidates}) == 3
+        ):
+            return candidates
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This session has no valid answer choices; start a new roleplay session",
+        )
+
     async def create_session(
         self,
         db: AsyncSession,
@@ -86,17 +118,19 @@ class RoleplayService:
             initial_state=initial_state,
         )
 
-        # 3. Generate and persist the first NPC message
-        first_message = await self.ai.generate_first_npc_message(scenario)
+        # 3. Generate and persist the first NPC message and answer choices
+        opening = await self.ai.generate_first_npc_message(scenario)
+        answer_choices = [choice.text for choice in opening.answer_choices]
         await self.fb.save_message(
             session_id=str(session_id),
             sender="npc",
-            message=first_message,
+            message=opening.npc_response,
             turn_number=1,
+            answer_choices=answer_choices,
         )
         await self.fb.update_session_state(
             session_id=str(session_id),
-            state_data=initial_state,
+            state_data={**initial_state, "answer_choices": answer_choices},
             turn_number=1,
             message_count_increment=1,
         )
@@ -110,7 +144,8 @@ class RoleplayService:
             status="active",
             turn_number=1,
             initial_state=state_data,
-            first_npc_message=first_message,
+            first_npc_message=opening.npc_response,
+            answers_choices=answer_choices,
             created_at=now,
             max_turns=scenario.max_turns,
         )
@@ -253,6 +288,7 @@ class RoleplayService:
 
         runtime_state_dict = await self.fb.get_session_state(str(session_id))
         runtime_state = SessionStateData.model_validate(runtime_state_dict)
+        answer_choices = await self._get_current_answer_choices(str(session_id), runtime_state_dict)
 
         scores = SessionScores(
             critical_thinking=sess.critical_thinking,
@@ -278,6 +314,7 @@ class RoleplayService:
             turn_number=runtime_state_dict.get("turn_number", 1),
             scores=scores,
             current_state=runtime_state,
+            answers_choices=answer_choices,
             xp_earned=sess.xp_earned,
             created_at=sess.created_at,
             completed_at=sess.completed_at,
@@ -328,6 +365,14 @@ class RoleplayService:
         # 3. Retrieve recent history and state from Firebase
         history = await self.fb.get_recent_messages(str(session_id), limit=8)
         current_state = await self.fb.get_session_state(str(session_id))
+        available_choices = await self._get_current_answer_choices(
+            str(session_id), current_state, recent_messages=history
+        )
+        if req.message not in available_choices:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message must match one of the current answers_choices",
+            )
         current_turn = current_state.get("turn_number", len(history) // 2) + 1
 
         # 4. Invoke AI evaluation and dialogue generation
@@ -343,6 +388,7 @@ class RoleplayService:
             return max(0, min(10, v))
 
         changes = ai_turn.state_changes
+        answer_choices = [choice.text for choice in ai_turn.answer_choices]
         new_state = {
             "collector_pressure": bound(current_state.get("collector_pressure", 5) + changes.collector_pressure),
             "financial_risk": bound(current_state.get("financial_risk", 5) + changes.financial_risk),
@@ -350,6 +396,7 @@ class RoleplayService:
             "negotiation_power": bound(current_state.get("negotiation_power", 5) + changes.negotiation_power),
             "current_stage": "negotiation" if current_turn > 2 else "opening",
             "last_decision": req.message[:50],
+            "answer_choices": answer_choices,
         }
 
         # 6. Compute turn XP and update PostgreSQL session stats
@@ -373,6 +420,7 @@ class RoleplayService:
             sender="npc",
             message=ai_turn.npc_response,
             turn_number=current_turn,
+            answer_choices=answer_choices,
         )
         await self.fb.update_session_state(
             session_id=str(session_id),
@@ -389,6 +437,7 @@ class RoleplayService:
             turn_number=current_turn,
             user_message=req.message,
             npc_response=ai_turn.npc_response,
+            answers_choices=answer_choices,
             evaluation=ai_turn.evaluation,
             state_changes=changes,
             current_state=SessionStateData.model_validate(new_state),

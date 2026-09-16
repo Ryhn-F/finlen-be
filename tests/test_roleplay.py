@@ -55,6 +55,8 @@ async def test_roleplay_session_lifecycle(client: AsyncClient):
     assert session_data["turn_number"] == 1
     assert "first_npc_message" in session_data
     assert len(session_data["first_npc_message"]) > 0
+    assert len(session_data["answers_choices"]) == 3
+    assert len(set(session_data["answers_choices"])) == 3
 
     # 4. Get session details
     detail_res = await client.get(
@@ -67,6 +69,7 @@ async def test_roleplay_session_lifecycle(client: AsyncClient):
     assert detail["status"] == "active"
     assert "scores" in detail
     assert "current_state" in detail
+    assert detail["answers_choices"] == session_data["answers_choices"]
 
     # 5. Access check: User 2 should be forbidden from accessing User 1's session
     forbidden_res = await client.get(
@@ -76,9 +79,10 @@ async def test_roleplay_session_lifecycle(client: AsyncClient):
     assert forbidden_res.status_code == 403
 
     # 6. Send user message (Turn evaluation)
+    selected_answer = session_data["answers_choices"][2]
     msg_res = await client.post(
         f"/api/v1/roleplay/sessions/{session_id}/messages",
-        json={"message": "Saya ingin melihat salinan kontrak dan bukti surat tugas resmi Anda terlebih dahulu."},
+        json={"message": selected_answer},
         headers=headers1,
     )
     assert msg_res.status_code == 200, msg_res.text
@@ -89,6 +93,8 @@ async def test_roleplay_session_lifecycle(client: AsyncClient):
     assert "consequence" in msg_data["evaluation"]
     assert "feedback" in msg_data["evaluation"]
     assert "npc_response" in msg_data
+    assert len(msg_data["answers_choices"]) == 3
+    assert len(set(msg_data["answers_choices"])) == 3
     assert "session_scores" in msg_data
     assert msg_data["xp_earned_this_turn"] > 0
 
@@ -105,6 +111,9 @@ async def test_roleplay_session_lifecycle(client: AsyncClient):
     assert history_res.status_code == 200
     messages = history_res.json()
     assert len(messages) >= 2  # Opening NPC message + User message + NPC response
+    npc_messages = [message for message in messages if message["sender"] == "npc"]
+    assert all(len(message["answers_choices"]) == 3 for message in npc_messages)
+    assert all(message["answers_choices"] is None for message in messages if message["sender"] != "npc")
 
     # 8. Complete session
     complete_res = await client.post(

@@ -1,9 +1,13 @@
 from datetime import datetime
-from typing import Any, Dict, List, Literal
+from typing import Annotated, Any, Dict, List, Literal
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 from finlen_be.schemas.ai import StateChanges, TurnEvaluation
+
+
+AnswerChoiceText = Annotated[str, Field(min_length=1)]
+AnswerChoices = Annotated[List[AnswerChoiceText], Field(min_length=3, max_length=3)]
 
 
 class CreateSessionRequest(BaseModel):
@@ -37,6 +41,7 @@ class RoleplayMessageItem(BaseModel):
     turn_number: int
     created_at: str | datetime
     evaluation: TurnEvaluation | None = None
+    answers_choices: AnswerChoices | None = Field(default=None, validation_alias="answer_choices")
 
 
 class CreateSessionResponse(BaseModel):
@@ -47,6 +52,7 @@ class CreateSessionResponse(BaseModel):
     turn_number: int
     initial_state: SessionStateData
     first_npc_message: str
+    answers_choices: AnswerChoices
     created_at: datetime
     max_turns: int = 10
 
@@ -61,6 +67,7 @@ class SendMessageResponse(BaseModel):
     turn_number: int
     user_message: str
     npc_response: str
+    answers_choices: AnswerChoices
     evaluation: TurnEvaluation
     state_changes: StateChanges
     current_state: SessionStateData
@@ -77,6 +84,7 @@ class SessionDetailResponse(BaseModel):
     turn_number: int
     scores: SessionScores
     current_state: SessionStateData | None = None
+    answers_choices: AnswerChoices
     xp_earned: int
     created_at: datetime
     completed_at: datetime | None = None

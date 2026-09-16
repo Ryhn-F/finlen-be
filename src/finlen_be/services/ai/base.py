@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from finlen_be.models.scenario import Scenario
-from finlen_be.schemas.ai import AITurnResponse
+from finlen_be.schemas.ai import AITurnResponse, OpeningNPCResponse
 
 
 class BaseAIService(ABC):
     @abstractmethod
-    async def generate_first_npc_message(self, scenario: Scenario) -> str:
-        """Generate the opening in-character message for an NPC."""
+    async def generate_first_npc_message(self, scenario: Scenario) -> OpeningNPCResponse:
+        """Generate the opening NPC message and the user's available answer choices."""
         pass
 
     @abstractmethod

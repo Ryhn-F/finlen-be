@@ -11,8 +11,10 @@ from finlen_be.main import app
 from finlen_be.models.scenario import Scenario
 from finlen_be.schemas.ai import (
     AITurnResponse,
+    AnswerChoice,
     EvaluationConsequence,
     EvaluationScores,
+    OpeningNPCResponse,
     StateChanges,
     TurnEvaluation,
 )
@@ -23,8 +25,18 @@ from finlen_be.services.roleplay_service import roleplay_service
 
 
 class MockAIService(BaseAIService):
-    async def generate_first_npc_message(self, scenario: Scenario) -> str:
-        return f"Halo, saya {scenario.npc_role}. Bayar sekarang juga!"
+    def _answer_choices(self) -> list[AnswerChoice]:
+        return [
+            AnswerChoice(text="Saya langsung membayar tanpa verifikasi.", decision_type="dangerous"),
+            AnswerChoice(text="Saya meminjam uang lain untuk membayar.", decision_type="dangerous"),
+            AnswerChoice(text="Saya verifikasi dokumen dan kanal resmi dahulu.", decision_type="safe"),
+        ]
+
+    async def generate_first_npc_message(self, scenario: Scenario) -> OpeningNPCResponse:
+        return OpeningNPCResponse(
+            npc_response=f"Halo, saya {scenario.npc_role}. Bayar sekarang juga!",
+            answer_choices=self._answer_choices(),
+        )
 
     async def evaluate_and_respond(
         self,
@@ -61,6 +73,7 @@ class MockAIService(BaseAIService):
             ),
             state_changes=state_changes,
             npc_response=npc_response,
+            answer_choices=self._answer_choices(),
         )
 
 

@@ -401,6 +401,7 @@ Start a new roleplay session. Initializes both PostgreSQL database record and Fi
 | `turn_number` | `integer` | Starts at `1` |
 | `initial_state` | `SessionStateData` | Starting runtime state |
 | `first_npc_message` | `string` | Opening in-character dialogue from the NPC |
+| `answers_choices` | `array<string>` | Exactly 3 possible user answers to `first_npc_message`: 2 dangerous decisions and 1 safe/right decision, in randomized order |
 | `created_at` | `string` (ISO-8601) | Creation timestamp |
 
 #### Response Example
@@ -421,6 +422,11 @@ Start a new roleplay session. Initializes both PostgreSQL database record and Fi
     "updated_at": null
   },
   "first_npc_message": "Halo! Ini Budi dari penagihan pelunasan kredit. Pinjaman Anda sebesar Rp3.000.000 sudah menunggak 2 bulan! Hari ini juga harus ada pembayaran, atau tim kami akan mendatangi alamat Anda!",
+  "answers_choices": [
+    "Saya akan langsung transfer ke rekening yang Anda berikan agar masalah ini selesai.",
+    "Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu.",
+    "Saya akan mengambil pinjaman lain hari ini untuk membayar tagihan ini."
+  ],
   "created_at": "2026-09-06T13:15:00.000Z"
 }
 ```
@@ -445,6 +451,7 @@ Retrieve the current state, status, and running score metrics for a session.
 | `turn_number` | `integer` | Current turn count |
 | `scores` | `SessionScores` | Running performance scores (`0..100`) |
 | `current_state` | `SessionStateData` | Runtime state from Firestore |
+| `answers_choices` | `array<string>` | The 3 choices for answering the latest NPC message: 2 dangerous decisions and 1 safe/right decision, in randomized order |
 | `xp_earned` | `integer` | Accumulated XP in this session |
 | `created_at` | `string` (ISO-8601) | Session start time |
 | `completed_at` | `string` (ISO-8601) or `null` | Completion time if finalized |
@@ -473,6 +480,11 @@ Retrieve the current state, status, and running score metrics for a session.
     "last_decision": "Saya ingin verifikasi kontrak...",
     "updated_at": "2026-09-06T13:16:30.000Z"
   },
+  "answers_choices": [
+    "Saya akan langsung membayar melalui rekening yang baru Anda kirimkan.",
+    "Saya akan memverifikasi dokumen tersebut dan hanya membayar melalui kanal resmi.",
+    "Saya akan mengambil pinjaman cepat lain agar bisa membayar hari ini."
+  ],
   "xp_earned": 55,
   "created_at": "2026-09-06T13:15:00.000Z",
   "completed_at": null
@@ -482,6 +494,7 @@ Retrieve the current state, status, and running score metrics for a session.
 #### Potential Error Codes
 - `403 Forbidden`: Authenticated user does not own this session.
 - `404 Not Found`: Session ID does not exist.
+- `409 Conflict`: A legacy or incomplete session has no valid answer choices; start a new session.
 
 ---
 
@@ -594,7 +607,7 @@ An account with no completed sessions receives `{"points": [], "count": 0, "limi
 
 ### 4.8 POST `/api/v1/roleplay/sessions/{session_id}/messages`
 
-Submit a player statement or action. The backend coordinates Google Gemini (`gemini-2.5-flash`) to evaluate the player's decision, update Firestore and PostgreSQL, and generate the next NPC response.
+Submit one of the provided answer choices as the player's statement or action. The backend coordinates Google Gemini (`gemini-2.5-flash`) to evaluate the selected decision, update Firestore and PostgreSQL, generate the next NPC response, and return the next three choices.
 
 - **Authentication**: Bearer Token required
 - **Path Parameter**: `session_id` (`UUID`)
@@ -603,12 +616,12 @@ Submit a player statement or action. The backend coordinates Google Gemini (`gem
 #### Request Body Schema
 | Field | Type | Required | Constraints | Description |
 |---|---|---|---|---|
-| `message` | `string` | **Yes** | Min 1, Max 2000 chars | Player's dialogue or action |
+| `message` | `string` | **Yes** | Min 1, Max 2000 chars | One answer selected from the latest `answers_choices` array |
 
 #### Request Example
 ```json
 {
-  "message": "Saya minta salinan bukti kontrak dan surat tugas resmi Anda dikirimkan ke email saya sebelum membicarakan opsi pembayaran."
+  "message": "Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu."
 }
 ```
 
@@ -618,6 +631,7 @@ Submit a player statement or action. The backend coordinates Google Gemini (`gem
 | `turn_number` | `integer` | The turn just executed |
 | `user_message` | `string` | Echo of player's message |
 | `npc_response` | `string` | Dialogue reply spoken by NPC |
+| `answers_choices` | `array<string>` | Exactly 3 choices for the next user turn: 2 dangerous decisions and 1 safe/right decision, in randomized order |
 | `evaluation` | `TurnEvaluation` | Granular AI evaluation of player's decision |
 | `state_changes` | `StateChanges` | Deltas applied to runtime state |
 | `current_state` | `SessionStateData` | Updated runtime state (clamped 0..10) |
@@ -628,8 +642,13 @@ Submit a player statement or action. The backend coordinates Google Gemini (`gem
 ```json
 {
   "turn_number": 2,
-  "user_message": "Saya minta salinan bukti kontrak dan surat tugas resmi Anda dikirimkan ke email saya sebelum membicarakan opsi pembayaran.",
+  "user_message": "Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu.",
   "npc_response": "Baik, saya kirimkan salinan surat tugas resmi ke email Anda sekarang. Tapi ingat, pokok utang Rp3.000.000 tetap harus diselesaikan!",
+  "answers_choices": [
+    "Saya akan langsung membayar melalui rekening yang baru Anda kirimkan.",
+    "Saya akan memverifikasi dokumen tersebut dan hanya membayar melalui kanal resmi.",
+    "Saya akan mengambil pinjaman cepat lain agar bisa membayar hari ini."
+  ],
   "evaluation": {
     "scores": {
       "critical_thinking": 3,
@@ -676,9 +695,11 @@ Submit a player statement or action. The backend coordinates Google Gemini (`gem
 ```
 
 #### Potential Error Codes
+- `400 Bad Request`: The submitted `message` does not match one of the current `answers_choices`.
 - `400 Bad Request`: `{"detail": "Cannot send messages to a 'completed' session"}`
 - `403 Forbidden`: User does not own this session.
 - `404 Not Found`: Session not found.
+- `409 Conflict`: The session has no valid current answer choices.
 
 ---
 
@@ -704,6 +725,7 @@ Array of `RoleplayMessageItem` objects:
 | `turn_number` | `integer` | Turn index |
 | `created_at` | `string` (ISO-8601) | Timestamp |
 | `evaluation` | `TurnEvaluation` or `null` | Present ONLY on `sender == "user"` messages |
+| `answers_choices` | `array<string>` or `null` | Exactly 3 choices, present on NPC messages and `null` on user/system messages |
 
 #### Response Example
 ```json
@@ -714,7 +736,12 @@ Array of `RoleplayMessageItem` objects:
     "message": "Halo! Ini Budi dari penagihan...",
     "turn_number": 1,
     "created_at": "2026-09-06T13:15:05.000Z",
-    "evaluation": null
+    "evaluation": null,
+    "answers_choices": [
+      "Saya akan langsung transfer ke rekening yang Anda berikan agar masalah ini selesai.",
+      "Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu.",
+      "Saya akan mengambil pinjaman lain hari ini untuk membayar tagihan ini."
+    ]
   },
   {
     "id": "9369da9a-bc01-4475-b636-e82eb5cbead8",
@@ -740,7 +767,8 @@ Array of `RoleplayMessageItem` objects:
         "trust_level": 1,
         "negotiation_power": 2
       }
-    }
+    },
+    "answers_choices": null
   }
 ]
 ```

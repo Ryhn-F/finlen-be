@@ -1,5 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EvaluationScores(BaseModel):
@@ -38,7 +39,36 @@ class TurnEvaluation(BaseModel):
     state_changes: StateChanges
 
 
-class AITurnResponse(BaseModel):
+class AnswerChoice(BaseModel):
+    """Internally labeled choice used to enforce the required safety distribution."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, description="User dialogue or action in Indonesian")
+    decision_type: Literal["dangerous", "safe"]
+
+
+class AnswerChoicesMixin(BaseModel):
+    answer_choices: list[AnswerChoice] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def validate_answer_choice_distribution(self) -> "AnswerChoicesMixin":
+        decision_types = [choice.decision_type for choice in self.answer_choices]
+        if decision_types.count("dangerous") != 2 or decision_types.count("safe") != 1:
+            raise ValueError("answer_choices must contain exactly two dangerous choices and one safe choice")
+        normalized_texts = {choice.text.strip().casefold() for choice in self.answer_choices}
+        if len(normalized_texts) != 3:
+            raise ValueError("answer_choices must contain three distinct choices")
+        return self
+
+
+class OpeningNPCResponse(AnswerChoicesMixin):
+    model_config = ConfigDict(extra="ignore")
+
+    npc_response: str = Field(min_length=1, description="Opening dialogue from NPC")
+
+
+class AITurnResponse(AnswerChoicesMixin):
     model_config = ConfigDict(extra="ignore")
 
     evaluation: TurnEvaluation

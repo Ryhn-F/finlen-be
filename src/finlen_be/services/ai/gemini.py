@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import re
 from typing import Any, Dict, List
 import httpx
@@ -9,8 +10,10 @@ from finlen_be.core.config import settings
 from finlen_be.models.scenario import Scenario
 from finlen_be.schemas.ai import (
     AITurnResponse,
+    AnswerChoice,
     EvaluationConsequence,
     EvaluationScores,
+    OpeningNPCResponse,
     StateChanges,
     TurnEvaluation,
 )
@@ -49,6 +52,35 @@ class GeminiAIService(BaseAIService):
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
             cleaned = cleaned[start_idx : end_idx + 1]
         return cleaned
+
+    def _fallback_answer_choices(self, scenario: Scenario) -> list[AnswerChoice]:
+        """Return a scenario-aware set containing two dangerous choices and one safe choice."""
+        if scenario.slug == "aggressive-debt-collector":
+            choices = [
+                ("Saya akan langsung transfer ke rekening yang Anda berikan agar masalah ini selesai.", "dangerous"),
+                ("Saya akan mengambil pinjaman lain hari ini untuk membayar tagihan ini.", "dangerous"),
+                ("Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu.", "safe"),
+            ]
+        elif scenario.slug == "illegal-pinjol-threat":
+            choices = [
+                ("Saya akan transfer sekarang ke rekening pribadi yang Anda kirimkan.", "dangerous"),
+                ("Saya akan memberikan data pribadi tambahan agar Anda tidak menghubungi kontak saya.", "dangerous"),
+                ("Saya tidak akan membayar lewat kanal tidak resmi; saya akan menyimpan bukti dan melapor ke OJK atau polisi.", "safe"),
+            ]
+        elif scenario.slug == "impulsive-flash-sale-fomo":
+            choices = [
+                ("Saya checkout sekarang dengan cicilan tanpa menghitung total biayanya.", "dangerous"),
+                ("Saya gunakan seluruh dana darurat supaya tidak kehabisan barangnya.", "dangerous"),
+                ("Saya lewatkan promo ini dan memeriksa kebutuhan, anggaran, serta total biaya terlebih dahulu.", "safe"),
+            ]
+        else:
+            choices = [
+                ("Saya langsung menyetujui tawaran ini tanpa memeriksa detailnya.", "dangerous"),
+                ("Saya mengambil keputusan sekarang meskipun belum memahami risikonya.", "dangerous"),
+                ("Saya akan memverifikasi informasi resmi, risiko, dan kemampuan keuangan saya terlebih dahulu.", "safe"),
+            ]
+        random.SystemRandom().shuffle(choices)
+        return [AnswerChoice(text=text, decision_type=decision_type) for text, decision_type in choices]
 
     def _create_fallback_response(self, user_message: str, scenario: Scenario) -> AITurnResponse:
         """Safe deterministic fallback when external AI is unreachable or outputs malformed data."""
@@ -124,16 +156,23 @@ class GeminiAIService(BaseAIService):
             evaluation=evaluation,
             state_changes=state_changes,
             npc_response=npc_response,
+            answer_choices=self._fallback_answer_choices(scenario),
         )
 
-    async def generate_first_npc_message(self, scenario: Scenario) -> str:
-        """Generate the in-character greeting from the NPC using Gemini."""
+    async def generate_first_npc_message(self, scenario: Scenario) -> OpeningNPCResponse:
+        """Generate the opening NPC message and three validated user answer choices."""
         system_prompt = (
             f"You are roleplaying as {scenario.npc_role} in this scenario: {scenario.title}.\n"
             f"Scenario Context: {json.dumps(scenario.financial_context, ensure_ascii=False)}\n"
             f"System Instructions: {scenario.system_prompt}\n"
-            f"Generate an authentic, concise first opening message (in Indonesian) to initiate contact with the user. "
-            f"Do not include meta comments, greetings like 'Sure, here is the opening', or markdown formatting. Only dialogue."
+            "Generate an authentic, concise opening NPC message in Indonesian and exactly three plausible Indonesian "
+            "answers the user can choose from. Exactly two choices must lead toward a dangerous financial decision "
+            "and exactly one must be the safe, correct decision. Randomize their order. Do not reveal which choice "
+            "is safe in its text. Return ONLY one valid JSON object using this schema:\n"
+            '{"npc_response":"NPC dialogue","answer_choices":['
+            '{"text":"User answer","decision_type":"dangerous"},'
+            '{"text":"User answer","decision_type":"safe"},'
+            '{"text":"User answer","decision_type":"dangerous"}]}'
         )
 
         model_name = self._get_clean_model_name()
@@ -154,50 +193,59 @@ class GeminiAIService(BaseAIService):
             ],
             "generationConfig": {
                 "temperature": 0.7,
-                "maxOutputTokens": 300,
+                "maxOutputTokens": 700,
+                "responseMimeType": "application/json",
             },
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(
-                    endpoint,
-                    headers=headers,
-                    json=payload,
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            content = parts[0].get("text", "")
-                            if content and content.strip():
-                                return content.strip()
-        except Exception as e:
-            logger.warning("Gemini request failed for opening message: %s. Using default opening.", e)
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    res = await client.post(endpoint, headers=headers, json=payload)
+                    if res.status_code != 200:
+                        logger.warning(
+                            "Gemini returned status %d for opening message (attempt %d): %s",
+                            res.status_code,
+                            attempt + 1,
+                            res.text,
+                        )
+                        continue
+                    candidates = res.json().get("candidates", [])
+                    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+                    raw_content = parts[0].get("text") if parts else None
+                    if raw_content:
+                        parsed = json.loads(self._clean_json_string(raw_content))
+                        return OpeningNPCResponse.model_validate(parsed)
+            except (json.JSONDecodeError, ValidationError) as e:
+                logger.warning("Gemini opening response validation failed (attempt %d): %s", attempt + 1, e)
+            except Exception as e:
+                logger.warning("Gemini request failed for opening message (attempt %d): %s", attempt + 1, e)
 
         # Fallback opening tailored per scenario
         if scenario.slug == "aggressive-debt-collector":
-            return (
+            npc_response = (
                 "Halo! Ini Budi dari penagihan pelunasan kredit. Pinjaman Anda sebesar Rp3.000.000 sudah menunggak 2 bulan! "
                 "Hari ini juga harus ada pembayaran, atau tim kami akan mendatangi alamat Anda!"
             )
         elif scenario.slug == "illegal-pinjol-threat":
-            return (
+            npc_response = (
                 "Woi! Tagihan Rp2.800.000 Anda sudah lewat jatuh tempo! Dalam 30 menit kalau tidak transfer bukti bayar, "
                 "semua kontak di HP Anda akan saya hubungi dan data Anda kami sebarkan!"
             )
         elif scenario.slug == "impulsive-flash-sale-fomo":
-            return (
+            npc_response = (
                 "Halo Bosku! Tinggal 5 menit lagi flash sale 11.11 ditutup! HP Flagship cuma Rp5.999.000, sisa 3 unit lagi! "
                 "Jangan sampai nyesel seumur hidup, langsung checkout pakai cicilan sekarang!"
             )
         else:
-            return (
+            npc_response = (
                 f"Halo, saya {scenario.npc_role}. Mengenai situasi terkait {scenario.title}, "
-                f"kita perlu membicarakan ini sekarang."
+                "kita perlu membicarakan ini sekarang."
             )
+        return OpeningNPCResponse(
+            npc_response=npc_response,
+            answer_choices=self._fallback_answer_choices(scenario),
+        )
 
     async def evaluate_and_respond(
         self,
@@ -221,7 +269,8 @@ class GeminiAIService(BaseAIService):
             f"4. State changes must be between -5 and +5 for collector_pressure, financial_risk, trust_level, negotiation_power.\n"
             f"5. Severity must be one of: 'positive', 'neutral', 'negative', 'critical'.\n"
             f"6. Educational feedback must be concise, objective, and highlight financial literacy principles.\n"
-            f"7. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
+            f"7. Generate exactly three plausible Indonesian user answers to the new NPC response. Exactly two must lead toward dangerous decisions and exactly one must be the safe, correct decision. Randomize their order and do not reveal the label in the answer text.\n"
+            f"8. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
             f"{{\n"
             f'  "evaluation": {{\n'
             f'    "scores": {{\n'
@@ -242,7 +291,12 @@ class GeminiAIService(BaseAIService):
             f'    "trust_level": 1,\n'
             f'    "negotiation_power": 2\n'
             f"  }},\n"
-            f'  "npc_response": "In-character dialogue spoken by NPC in Indonesian"\n'
+            f'  "npc_response": "In-character dialogue spoken by NPC in Indonesian",\n'
+            f'  "answer_choices": [\n'
+            f'    {{"text": "Plausible user answer", "decision_type": "dangerous"}},\n'
+            f'    {{"text": "Plausible user answer", "decision_type": "safe"}},\n'
+            f'    {{"text": "Plausible user answer", "decision_type": "dangerous"}}\n'
+            f"  ]\n"
             f"}}"
         )
 
