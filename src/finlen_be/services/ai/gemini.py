@@ -1,25 +1,27 @@
+import asyncio
 import json
 import logging
-import random
 import re
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Type, TypeVar
+
 import httpx
-from pydantic import ValidationError
+from fastapi import HTTPException, status
+from pydantic import BaseModel, ValidationError
 
 from finlen_be.core.config import settings
 from finlen_be.models.scenario import Scenario
-from finlen_be.schemas.ai import (
-    AITurnResponse,
-    AnswerChoice,
-    EvaluationConsequence,
-    EvaluationScores,
-    OpeningNPCResponse,
-    StateChanges,
-    TurnEvaluation,
-)
+from finlen_be.schemas.ai import AITurnResponse, OpeningNPCResponse
 from finlen_be.services.ai.base import BaseAIService
 
 logger = logging.getLogger(__name__)
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+# Keep retrying against Gemini until a schema-valid response is produced instead of
+# silently degrading to a scripted fallback, which could mislead the learner mid-roleplay.
+MAX_ATTEMPTS = 6
+BASE_BACKOFF_SECONDS = 1.5
+MAX_BACKOFF_SECONDS = 10.0
 
 
 class GeminiAIService(BaseAIService):
@@ -53,110 +55,87 @@ class GeminiAIService(BaseAIService):
             cleaned = cleaned[start_idx : end_idx + 1]
         return cleaned
 
-    def _fallback_answer_choices(self, scenario: Scenario) -> list[AnswerChoice]:
-        """Return a scenario-aware set containing two dangerous choices and one safe choice."""
-        if scenario.slug == "aggressive-debt-collector":
-            choices = [
-                ("Saya akan langsung transfer ke rekening yang Anda berikan agar masalah ini selesai.", "dangerous"),
-                ("Saya akan mengambil pinjaman lain hari ini untuk membayar tagihan ini.", "dangerous"),
-                ("Saya akan memverifikasi kontrak, surat tugas, jumlah tagihan, dan kanal pembayaran resmi terlebih dahulu.", "safe"),
-            ]
-        elif scenario.slug == "illegal-pinjol-threat":
-            choices = [
-                ("Saya akan transfer sekarang ke rekening pribadi yang Anda kirimkan.", "dangerous"),
-                ("Saya akan memberikan data pribadi tambahan agar Anda tidak menghubungi kontak saya.", "dangerous"),
-                ("Saya tidak akan membayar lewat kanal tidak resmi; saya akan menyimpan bukti dan melapor ke OJK atau polisi.", "safe"),
-            ]
-        elif scenario.slug == "impulsive-flash-sale-fomo":
-            choices = [
-                ("Saya checkout sekarang dengan cicilan tanpa menghitung total biayanya.", "dangerous"),
-                ("Saya gunakan seluruh dana darurat supaya tidak kehabisan barangnya.", "dangerous"),
-                ("Saya lewatkan promo ini dan memeriksa kebutuhan, anggaran, serta total biaya terlebih dahulu.", "safe"),
-            ]
-        else:
-            choices = [
-                ("Saya langsung menyetujui tawaran ini tanpa memeriksa detailnya.", "dangerous"),
-                ("Saya mengambil keputusan sekarang meskipun belum memahami risikonya.", "dangerous"),
-                ("Saya akan memverifikasi informasi resmi, risiko, dan kemampuan keuangan saya terlebih dahulu.", "safe"),
-            ]
-        random.SystemRandom().shuffle(choices)
-        return [AnswerChoice(text=text, decision_type=decision_type) for text, decision_type in choices]
+    async def _generate_validated(
+        self,
+        endpoint: str,
+        headers: Dict[str, str],
+        payload: Dict[str, Any],
+        model_cls: Type[ModelT],
+        context: str,
+        postprocess: Callable[[Dict[str, Any]], Dict[str, Any]] | None = None,
+    ) -> ModelT:
+        """Call Gemini and validate the JSON payload, retrying until success or attempts run out.
 
-    def _create_fallback_response(self, user_message: str, scenario: Scenario) -> AITurnResponse:
-        """Safe deterministic fallback when external AI is unreachable or outputs malformed data."""
-        msg_lower = user_message.lower()
-        is_cautious = any(
-            w in msg_lower
-            for w in [
-                "kontrak",
-                "cek",
-                "verifikasi",
-                "bukti",
-                "surat",
-                "polisi",
-                "ojk",
-                "resmi",
-                "tidak",
-                "tunda",
-                "pikir",
-                "bunga",
-            ]
-        )
-        if is_cautious:
-            scores = EvaluationScores(
-                critical_thinking=3,
-                risk_awareness=3,
-                impulse_control=2,
-                decision_making=2,
-            )
-            consequence = EvaluationConsequence(
-                description="You maintained caution and requested verification, resisting impulsive pressure.",
-                severity="positive",
-            )
-            feedback = "You paused to evaluate legal/contractual facts instead of succumbing to panic or pressure."
-            state_changes = StateChanges(
-                collector_pressure=-1,
-                financial_risk=-2,
-                trust_level=1,
-                negotiation_power=2,
-            )
-            npc_response = (
-                f"Saya catat permintaan Anda. Tapi ingat, kewajiban Anda tetap harus diselesaikan. "
-                f"Kapan tepatnya Anda bisa memastikan tanggal penyelesaiannya?"
-            )
-        else:
-            scores = EvaluationScores(
-                critical_thinking=-1,
-                risk_awareness=-1,
-                impulse_control=-1,
-                decision_making=-1,
-            )
-            consequence = EvaluationConsequence(
-                description="You responded without fully verifying conditions or terms.",
-                severity="neutral",
-            )
-            feedback = "Take time to verify the agreement terms and consider your budget constraints before agreeing."
-            state_changes = StateChanges(
-                collector_pressure=1,
-                financial_risk=1,
-                trust_level=0,
-                negotiation_power=-1,
-            )
-            npc_response = (
-                f"Bagus kalau Anda paham. Sekarang juga Anda harus tunjukkan komitmen pembayaran Anda!"
-            )
+        No deterministic fallback is used: if Gemini keeps failing or returning malformed
+        data, we raise instead of feeding the user a scripted/anomalous response.
+        """
+        last_error: Exception | None = None
 
-        evaluation = TurnEvaluation(
-            scores=scores,
-            consequence=consequence,
-            feedback=feedback,
-            state_changes=state_changes,
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    res = await client.post(endpoint, headers=headers, json=payload)
+
+                if res.status_code != 200:
+                    last_error = RuntimeError(f"Gemini returned status {res.status_code}: {res.text}")
+                    logger.warning(
+                        "Gemini %s failed (attempt %d/%d): %s",
+                        context,
+                        attempt,
+                        MAX_ATTEMPTS,
+                        last_error,
+                    )
+                else:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+                    raw_content = parts[0].get("text") if parts else None
+
+                    if not raw_content:
+                        last_error = RuntimeError("Gemini returned an empty response body")
+                        logger.warning(
+                            "Gemini %s returned empty content (attempt %d/%d)",
+                            context,
+                            attempt,
+                            MAX_ATTEMPTS,
+                        )
+                    else:
+                        parsed = json.loads(self._clean_json_string(raw_content))
+                        if postprocess:
+                            parsed = postprocess(parsed)
+                        return model_cls.model_validate(parsed)
+            except (json.JSONDecodeError, ValidationError) as e:
+                last_error = e
+                logger.warning(
+                    "Gemini %s JSON/schema validation failed (attempt %d/%d): %s",
+                    context,
+                    attempt,
+                    MAX_ATTEMPTS,
+                    e,
+                )
+            except httpx.HTTPError as e:
+                last_error = e
+                logger.warning(
+                    "Gemini %s network error (attempt %d/%d): %s",
+                    context,
+                    attempt,
+                    MAX_ATTEMPTS,
+                    e,
+                )
+
+            if attempt < MAX_ATTEMPTS:
+                backoff = min(BASE_BACKOFF_SECONDS * attempt, MAX_BACKOFF_SECONDS)
+                await asyncio.sleep(backoff)
+
+        logger.error(
+            "Gemini %s exhausted %d attempts without a valid response: %s",
+            context,
+            MAX_ATTEMPTS,
+            last_error,
         )
-        return AITurnResponse(
-            evaluation=evaluation,
-            state_changes=state_changes,
-            npc_response=npc_response,
-            answer_choices=self._fallback_answer_choices(scenario),
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI could not generate a valid roleplay response right now. Please try again shortly.",
         )
 
     async def generate_first_npc_message(self, scenario: Scenario) -> OpeningNPCResponse:
@@ -198,53 +177,12 @@ class GeminiAIService(BaseAIService):
             },
         }
 
-        for attempt in range(2):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    res = await client.post(endpoint, headers=headers, json=payload)
-                    if res.status_code != 200:
-                        logger.warning(
-                            "Gemini returned status %d for opening message (attempt %d): %s",
-                            res.status_code,
-                            attempt + 1,
-                            res.text,
-                        )
-                        continue
-                    candidates = res.json().get("candidates", [])
-                    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
-                    raw_content = parts[0].get("text") if parts else None
-                    if raw_content:
-                        parsed = json.loads(self._clean_json_string(raw_content))
-                        return OpeningNPCResponse.model_validate(parsed)
-            except (json.JSONDecodeError, ValidationError) as e:
-                logger.warning("Gemini opening response validation failed (attempt %d): %s", attempt + 1, e)
-            except Exception as e:
-                logger.warning("Gemini request failed for opening message (attempt %d): %s", attempt + 1, e)
-
-        # Fallback opening tailored per scenario
-        if scenario.slug == "aggressive-debt-collector":
-            npc_response = (
-                "Halo! Ini Budi dari penagihan pelunasan kredit. Pinjaman Anda sebesar Rp3.000.000 sudah menunggak 2 bulan! "
-                "Hari ini juga harus ada pembayaran, atau tim kami akan mendatangi alamat Anda!"
-            )
-        elif scenario.slug == "illegal-pinjol-threat":
-            npc_response = (
-                "Woi! Tagihan Rp2.800.000 Anda sudah lewat jatuh tempo! Dalam 30 menit kalau tidak transfer bukti bayar, "
-                "semua kontak di HP Anda akan saya hubungi dan data Anda kami sebarkan!"
-            )
-        elif scenario.slug == "impulsive-flash-sale-fomo":
-            npc_response = (
-                "Halo Bosku! Tinggal 5 menit lagi flash sale 11.11 ditutup! HP Flagship cuma Rp5.999.000, sisa 3 unit lagi! "
-                "Jangan sampai nyesel seumur hidup, langsung checkout pakai cicilan sekarang!"
-            )
-        else:
-            npc_response = (
-                f"Halo, saya {scenario.npc_role}. Mengenai situasi terkait {scenario.title}, "
-                "kita perlu membicarakan ini sekarang."
-            )
-        return OpeningNPCResponse(
-            npc_response=npc_response,
-            answer_choices=self._fallback_answer_choices(scenario),
+        return await self._generate_validated(
+            endpoint=endpoint,
+            headers=headers,
+            payload=payload,
+            model_cls=OpeningNPCResponse,
+            context="opening message generation",
         )
 
     async def evaluate_and_respond(
@@ -270,7 +208,8 @@ class GeminiAIService(BaseAIService):
             f"5. Severity must be one of: 'positive', 'neutral', 'negative', 'critical'.\n"
             f"6. Educational feedback must be concise, objective, and highlight financial literacy principles.\n"
             f"7. Generate exactly three plausible Indonesian user answers to the new NPC response. Exactly two must lead toward dangerous decisions and exactly one must be the safe, correct decision. Randomize their order and do not reveal the label in the answer text.\n"
-            f"8. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
+            f"8. You MUST respond with INDONESIAN language \n"
+            f"9. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
             f"{{\n"
             f'  "evaluation": {{\n'
             f'    "scores": {{\n'
@@ -331,50 +270,20 @@ class GeminiAIService(BaseAIService):
             },
         }
 
-        # Try API call with retry
-        for attempt in range(2):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    res = await client.post(
-                        endpoint,
-                        headers=headers,
-                        json=payload,
-                    )
-                    if res.status_code == 200:
-                        data = res.json()
-                        candidates = data.get("candidates", [])
-                        if not candidates:
-                            logger.warning("Gemini returned 200 but candidate list is empty (attempt %d)", attempt + 1)
-                            continue
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if not parts:
-                            logger.warning("Gemini returned 200 but parts list is empty (attempt %d)", attempt + 1)
-                            continue
-                        raw_content = parts[0].get("text")
-                        if not raw_content:
-                            logger.warning("Gemini returned 200 but content is null/empty (attempt %d)", attempt + 1)
-                            continue
-                        cleaned_json = self._clean_json_string(raw_content)
-                        parsed = json.loads(cleaned_json)
-                        # Ensure state_changes is nested in evaluation for schema compatibility if needed
-                        if "evaluation" in parsed and "state_changes" in parsed:
-                            parsed["evaluation"]["state_changes"] = parsed["state_changes"]
-                        return AITurnResponse.model_validate(parsed)
-                    else:
-                        logger.warning(
-                            "Gemini returned status %d (attempt %d): %s",
-                            res.status_code,
-                            attempt + 1,
-                            res.text,
-                        )
-            except (json.JSONDecodeError, ValidationError) as e:
-                logger.warning("Gemini JSON or schema validation error (attempt %d): %s", attempt + 1, e)
-            except Exception as e:
-                logger.warning("Gemini HTTP network error (attempt %d): %s", attempt + 1, e)
+        def _nest_state_changes(parsed: Dict[str, Any]) -> Dict[str, Any]:
+            # Ensure state_changes is nested in evaluation for schema compatibility if needed
+            if "evaluation" in parsed and "state_changes" in parsed:
+                parsed["evaluation"]["state_changes"] = parsed["state_changes"]
+            return parsed
 
-        # If all attempts fail, use deterministic fallback
-        logger.info("Using deterministic fallback response for turn.")
-        return self._create_fallback_response(user_message, scenario)
+        return await self._generate_validated(
+            endpoint=endpoint,
+            headers=headers,
+            payload=payload,
+            model_cls=AITurnResponse,
+            context="turn evaluation",
+            postprocess=_nest_state_changes,
+        )
 
 
 ai_service = GeminiAIService()

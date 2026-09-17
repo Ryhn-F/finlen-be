@@ -61,7 +61,6 @@ class ScenarioService:
                 title=material.title,
                 description=material.description,
                 formal_file_url=storage_service.get_public_url(material.formal_file_path),
-                brainrot_file_url=storage_service.get_public_url(material.brainrot_file_path),
                 source_name=material.source_name,
                 source_url=material.source_url,
                 created_at=material.created_at,

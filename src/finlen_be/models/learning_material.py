@@ -39,10 +39,6 @@ class LearningMaterial(Base):
         Text,
         nullable=False,
     )
-    brainrot_file_path: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-    )
     source_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,

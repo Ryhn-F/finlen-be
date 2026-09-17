@@ -26,9 +26,6 @@ class LearningMaterialItem(BaseModel):
     formal_file_url: str | None = Field(
         default=None, description="Public URL of the formal-version PDF resolved from Supabase Storage"
     )
-    brainrot_file_url: str | None = Field(
-        default=None, description="Public URL of the brainrot-version PDF resolved from Supabase Storage"
-    )
     source_name: str | None = None
     source_url: str | None = None
     created_at: datetime

@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # Supabase (Storage — used to build public URLs for learning material PDFs)
     SUPABASE_URL: str | None = None
     SUPABASE_KEY: str | None = None
-    SUPABASE_STORAGE_BUCKET: str = "learning-materials"
+    SUPABASE_STORAGE_BUCKET: str = "materials"
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"

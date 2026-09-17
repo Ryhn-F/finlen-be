@@ -23,7 +23,7 @@ class StorageService:
             return None
 
         try:
-            return client.storage.from_(settings.SUPABASE_STORAGE_BUCKET).get_public_url(file_path)
+            return client.storage.from_("materials").get_public_url(file_path)
         except Exception as e:
             logger.error("Failed to build public URL for file '%s': %s", file_path, e)
             return None
