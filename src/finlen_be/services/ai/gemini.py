@@ -208,8 +208,7 @@ class GeminiAIService(BaseAIService):
             f"5. Severity must be one of: 'positive', 'neutral', 'negative', 'critical'.\n"
             f"6. Educational feedback must be concise, objective, and highlight financial literacy principles.\n"
             f"7. Generate exactly three plausible Indonesian user answers to the new NPC response. Exactly two must lead toward dangerous decisions and exactly one must be the safe, correct decision. Randomize their order and do not reveal the label in the answer text.\n"
-            f"8. You MUST respond with INDONESIAN language \n"
-            f"9. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
+            f"8. You MUST respond with ONLY a single valid JSON object matching this exact schema:\n"
             f"{{\n"
             f'  "evaluation": {{\n'
             f'    "scores": {{\n'
