@@ -42,6 +42,47 @@ class GeminiAIService(BaseAIService):
             return self.model[len("models/") :]
         return self.model
 
+    @staticmethod
+    def _escape_control_chars(s: str) -> str:
+        """Escape unescaped ASCII control characters inside JSON string literals.
+
+        Gemini occasionally emits raw newlines, tabs, or other control chars
+        inside JSON string values. ``json.loads`` rejects these with an
+        *Unterminated string* error because the JSON spec requires them to be
+        escaped.  This method walks the string character-by-character, tracking
+        whether we are inside a JSON string, and replaces any bare control
+        character (``0x00``–``0x1F``) with its proper JSON escape sequence.
+        """
+        _SIMPLE: dict[int, str] = {
+            ord("\n"): "\\n",
+            ord("\r"): "\\r",
+            ord("\t"): "\\t",
+            ord("\b"): "\\b",
+            ord("\f"): "\\f",
+        }
+        result: list[str] = []
+        in_string = False
+        i = 0
+        length = len(s)
+        while i < length:
+            ch = s[i]
+            if ch == "\\" and in_string:
+                # Already-escaped sequence – keep it as-is (skip next char).
+                result.append(s[i : i + 2])
+                i += 2
+                continue
+            if ch == '"':
+                in_string = not in_string
+                result.append(ch)
+                i += 1
+                continue
+            if in_string and ord(ch) < 0x20:
+                result.append(_SIMPLE.get(ord(ch), f"\\u{ord(ch):04x}"))
+            else:
+                result.append(ch)
+            i += 1
+        return "".join(result)
+
     def _clean_json_string(self, raw_content: str) -> str:
         """Extract valid JSON from raw LLM output even if surrounded by markdown fences."""
         cleaned = raw_content.strip()
@@ -53,7 +94,48 @@ class GeminiAIService(BaseAIService):
         end_idx = cleaned.rfind("}")
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
             cleaned = cleaned[start_idx : end_idx + 1]
+        # Escape bare control chars that Gemini may leave inside string values.
+        cleaned = self._escape_control_chars(cleaned)
         return cleaned
+
+    @staticmethod
+    def _try_repair_json(raw: str) -> str | None:
+        """Best-effort repair for truncated / malformed JSON.
+
+        Tries progressively more aggressive strategies:
+        1. Append missing closing braces / brackets.
+        2. Truncate trailing broken string value and close the object.
+        Returns the repaired string, or *None* if nothing worked.
+        """
+        # Strategy 1: maybe Gemini just forgot to close braces / brackets.
+        attempt = raw.rstrip()
+        open_braces = attempt.count("{") - attempt.count("}")
+        open_brackets = attempt.count("[") - attempt.count("]")
+        if open_braces > 0 or open_brackets > 0:
+            attempt += "]" * max(open_brackets, 0) + "}" * max(open_braces, 0)
+            try:
+                json.loads(attempt)
+                return attempt
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 2: truncate the last (possibly unterminated) value.
+        #   Find the last complete key-value pair and close from there.
+        last_good = None
+        for m in re.finditer(r'"[^"]*"\s*:\s*(?:"[^"]*"|\d+|true|false|null|\{[^{}]*\}|\[[^\[\]]*\])', raw):
+            last_good = m.end()
+        if last_good:
+            truncated = raw[:last_good]
+            open_braces = truncated.count("{") - truncated.count("}")
+            open_brackets = truncated.count("[") - truncated.count("]")
+            truncated += "]" * max(open_brackets, 0) + "}" * max(open_braces, 0)
+            try:
+                json.loads(truncated)
+                return truncated
+            except json.JSONDecodeError:
+                pass
+
+        return None
 
     async def _generate_validated(
         self,
@@ -100,7 +182,26 @@ class GeminiAIService(BaseAIService):
                             MAX_ATTEMPTS,
                         )
                     else:
-                        parsed = json.loads(self._clean_json_string(raw_content))
+                        cleaned = self._clean_json_string(raw_content)
+                        try:
+                            parsed = json.loads(cleaned)
+                        except json.JSONDecodeError:
+                            # Attempt best-effort repair before giving up.
+                            logger.debug(
+                                "Gemini %s raw response (attempt %d): %s",
+                                context,
+                                attempt,
+                                raw_content[:500],
+                            )
+                            repaired = self._try_repair_json(cleaned)
+                            if repaired is None:
+                                raise  # re-raise original JSONDecodeError
+                            logger.info(
+                                "Gemini %s JSON repaired successfully (attempt %d)",
+                                context,
+                                attempt,
+                            )
+                            parsed = json.loads(repaired)
                         if postprocess:
                             parsed = postprocess(parsed)
                         return model_cls.model_validate(parsed)
@@ -172,8 +273,31 @@ class GeminiAIService(BaseAIService):
             ],
             "generationConfig": {
                 "temperature": 0.7,
-                "maxOutputTokens": 700,
+                "maxOutputTokens": 2048,
                 "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "npc_response": {"type": "STRING"},
+                        "answer_choices": {
+                            "type": "ARRAY",
+                            "minItems": 3,
+                            "maxItems": 3,
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "text": {"type": "STRING"},
+                                    "decision_type": {
+                                        "type": "STRING",
+                                        "enum": ["dangerous", "safe"],
+                                    },
+                                },
+                                "required": ["text", "decision_type"],
+                            },
+                        },
+                    },
+                    "required": ["npc_response", "answer_choices"],
+                },
             },
         }
 
@@ -264,8 +388,69 @@ class GeminiAIService(BaseAIService):
             "contents": contents,
             "generationConfig": {
                 "temperature": 0.4,
-                "maxOutputTokens": 1000,
+                "maxOutputTokens": 2048,
                 "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "evaluation": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "scores": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "critical_thinking": {"type": "INTEGER"},
+                                        "risk_awareness": {"type": "INTEGER"},
+                                        "impulse_control": {"type": "INTEGER"},
+                                        "decision_making": {"type": "INTEGER"},
+                                    },
+                                    "required": ["critical_thinking", "risk_awareness", "impulse_control", "decision_making"],
+                                },
+                                "consequence": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "description": {"type": "STRING"},
+                                        "severity": {
+                                            "type": "STRING",
+                                            "enum": ["positive", "neutral", "negative", "critical"],
+                                        },
+                                    },
+                                    "required": ["description", "severity"],
+                                },
+                                "feedback": {"type": "STRING"},
+                            },
+                            "required": ["scores", "consequence", "feedback"],
+                        },
+                        "state_changes": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "collector_pressure": {"type": "INTEGER"},
+                                "financial_risk": {"type": "INTEGER"},
+                                "trust_level": {"type": "INTEGER"},
+                                "negotiation_power": {"type": "INTEGER"},
+                            },
+                            "required": ["collector_pressure", "financial_risk", "trust_level", "negotiation_power"],
+                        },
+                        "npc_response": {"type": "STRING"},
+                        "answer_choices": {
+                            "type": "ARRAY",
+                            "minItems": 3,
+                            "maxItems": 3,
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "text": {"type": "STRING"},
+                                    "decision_type": {
+                                        "type": "STRING",
+                                        "enum": ["dangerous", "safe"],
+                                    },
+                                },
+                                "required": ["text", "decision_type"],
+                            },
+                        },
+                    },
+                    "required": ["evaluation", "state_changes", "npc_response", "answer_choices"],
+                },
             },
         }
 
