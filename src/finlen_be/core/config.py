@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # JWT Authentication
     JWT_SECRET_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 3600
 
     # Gemini & AI Model
     GEMINI_API_KEY: str | None = None
